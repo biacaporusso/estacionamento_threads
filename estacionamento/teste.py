@@ -4,7 +4,8 @@ import threading
 # Função para iniciar o servidor em uma determinada porta
 def iniciar_servidor(ip, porta):
     servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
+    ativada = False  # A estação começa inativa
+
     try:
         servidor.bind((ip, porta))  # Vincula o servidor ao IP e Porta
         servidor.listen(5)  # Limita a 5 conexões simultâneas no máximo
@@ -18,14 +19,24 @@ def iniciar_servidor(ip, porta):
             mensagem = conexao.recv(1024).decode('utf-8')
             print(f"Mensagem recebida: {mensagem} na porta {porta}")
 
-            # Processar a mensagem (neste exemplo, estamos esperando um código 'RV')
-            if mensagem.startswith("RV"):  # Verifica se a mensagem é uma requisição de vaga
-                print(f"Processando requisição de vaga na porta {porta}...")
-                conexao.send("OK".encode('utf-8'))  # Envia a resposta "OK"
+            # Se a mensagem for "AE", ativa a estação
+            if mensagem.startswith("AE"):  # Comando para ativar a estação
+                ativada = True
+                print(f"Estação na porta {porta} ativada.")
+                conexao.send("OK".encode('utf-8'))  # Confirma a ativação
 
+            elif ativada:  # Estação só processa outras mensagens se estiver ativada
+                if mensagem.startswith("RV"):  # Verifica se a mensagem é uma requisição de vaga
+                    print(f"Processando requisição de vaga na porta {porta}...")
+                    conexao.send("OK".encode('utf-8'))  # Envia a resposta "OK"
+                else:
+                    print(f"Mensagem desconhecida recebida na porta {porta}: {mensagem}")
+            else:
+                print(f"Estação na porta {porta} inativa. Ignorando mensagem: {mensagem}")
+            
             # Feche a conexão depois de processar a mensagem
-            conexao.close()
-            print(f"Conexão fechada na porta {porta}.")
+            #conexao.close()
+            #print(f"Conexão fechada na porta {porta}.")
     
     except Exception as e:
         print(f"Ocorreu um erro no servidor da porta {porta}: {e}")
@@ -56,7 +67,7 @@ def main():
         thread = threading.Thread(target=iniciar_servidor, args=(ip, porta))
         threads.append(thread)
         thread.start()
-        print(f"Servidor iniciado para IP {ip} e Porta {porta}...")
+        #print(f"Servidor iniciado para IP {ip} e Porta {porta}...")
 
     # Mantém a execução principal aguardando o término das threads (servidores)
     for thread in threads:
