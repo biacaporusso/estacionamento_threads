@@ -6,6 +6,7 @@ class Middleware:
         self.porta = porta
         self.estacao = estacao  # Referência à estação correspondente
         self.proximo_middleware = None  # O próximo middleware na lista circular
+        self.ativo = False
 
     async def iniciar_socket(self):
         # Inicializa o servidor assíncrono do middleware
@@ -19,17 +20,19 @@ class Middleware:
     async def processar_mensagem(self, reader, writer):
         data = await reader.read(100)
         message = data.decode('utf-8')
-        partes = message.split()
-        comando = partes[0]
-        id_estacao = partes[1]
-        id_vaga = partes[2]
-        id_carro = partes[3]
+        comando, *args = message.split()
+        comando = args[0]
+        id_estacao = args[1]
+        id_vaga = args[2]
+        id_carro = args[3]
         print(f"Middleware {self.ip}:{self.porta} recebeu comando: {message}")
 
         if comando == "BV":  # Comando buscar vaga
-            response = await self.buscar_vaga()
+            response = await self.consultar_proximo_middleware(args[1]) # nesse caso, args[1] é o id_carro 
         elif comando == "AV":  # Atualizar vaga (comando vindo da estação)
             await self.enviar_mensagem(f"AV {id_estacao} {id_vaga} {id_carro}", self.ip, 5555) # passar a mensagem atualizar vaga para o backup do gerente
+        elif comando == "AE":  # Ativar estação (comando vindo da estação)
+            response = await self.enviar_mensagem(f"AE {args[1]}", self.ip, 5555) # AE id_estação => passar a mensagem ativar estação para o backup do gerente
         else:
             response = "Comando não reconhecido"
 
@@ -49,16 +52,6 @@ class Middleware:
         except Exception as e:
             print(f"Erro ao conectar ao middleware: {e}")
 
-
-    async def buscar_vaga(self):
-        # Verifica se há vagas na estação correspondente
-        if len(self.estacao.vagas_ocupadas) < self.estacao.total_vagas:
-            self.estacao.vagas_ocupadas += 1
-            return "OK"  # Vaga encontrada
-        else:
-            # Não há vagas, consulta o próximo middleware
-            print(f"Middleware {self.ip}:{self.porta} consultando próximo middleware...")
-            return await self.consultar_proximo_middleware()
 
     async def consultar_proximo_middleware(self):
         if self.proximo_middleware:

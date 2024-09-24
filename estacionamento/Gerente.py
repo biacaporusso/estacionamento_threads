@@ -36,7 +36,11 @@ class Gerente:
 
         # Processa mensagens para atualizar o backup
         if comando == "AV":
-            self.atualizar_backup(id_estacao, id_vaga, id_carro)  # atualizar quantidade de vagas livres (vagas livres - 1)
+            #                 id_estacao   id_vaga  id_carro
+            self.atualizar_backup(args[1], args[2], args[3])
+        elif comando == "AE":
+            self.backup_estacoes[args[1]]["estacao_ativa"] = True
+
 
         writer.close()
 

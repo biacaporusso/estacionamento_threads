@@ -2,6 +2,8 @@ import asyncio
 from Estacao import Estacao
 from Middleware import Middleware
 
+vagas = 20
+
 # Função para ler o arquivo de estações e retornar uma lista de objetos Estacao
 def ler_arquivo_estacoes():
     estacoes = []
@@ -14,10 +16,9 @@ def ler_arquivo_estacoes():
                 id_estacao = partes[0]
                 ip = partes[1]
                 porta = int(partes[2])
-                total_vagas = 5  # Número fixo de vagas por estação
 
                 # Cria a estação
-                estacao = Estacao(id_estacao, ip, porta, total_vagas)
+                estacao = Estacao(id_estacao, ip, porta)
                 estacoes.append(estacao)
 
                 # Cria o middleware correspondente à estação
@@ -27,7 +28,7 @@ def ler_arquivo_estacoes():
     # Conectar os middlewares em uma lista circular
     for i in range(len(middlewares)):
         next_index = (i + 1) % len(middlewares)  # Calcula o próximo middleware circularmente
-        middlewares[i].proximo_middleware = middlewares[next_index]
+        middlewares[i].proximo_middleware = middlewares[next_index] 
 
     return estacoes, middlewares
 

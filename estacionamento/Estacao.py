@@ -22,9 +22,9 @@ class Estacao:
         data = await reader.read(100)
         message = data.decode('utf-8')
 
-        partes = message.split()  # Divide a mensagem em partes
-        comando = partes[0]  # O primeiro elemento é o comando
-        parametro = partes[1] if len(partes) > 1 else None  # O segundo elemento é o parâmetro (se existir)
+        comando, *args = message.split()  # Divide a mensagem em partes
+        comando = args[0]  # O primeiro elemento é o comando
+        parametro = args[1] if len(args) > 1 else None  # O segundo elemento é o parâmetro (se existir)
         print(f"Estação {self.id_estacao} recebeu comando: {comando}")
 
         if comando == "RV":
@@ -35,7 +35,7 @@ class Estacao:
         elif comando == "LV":
             response = await self.liberar_vaga()
         elif comando == "AE":
-            response = await self.ativar_estacao()
+            response = await self.ativar_estacao(args[1]) # passando id da estação
         elif comando == "FE":
             response = await self.finalizar_estacao()
         else:
@@ -45,6 +45,19 @@ class Estacao:
         await writer.drain()
         writer.close()
 
+
+    async def ativar_estacao(self, id_estacao):
+        self.ativo = True
+        await self.enviar_mensagem(f"AE {id_estacao}", self.ip, self.porta+10)    # Envia um "AE" pro middleware
+
+        # PAREI AQUI
+        # atualizei no backup a estação ativa, agora precisa redistribuir as vagas
+        # primeiro: olhar no backup quantas estações estão ativas
+        # segundo: dividir as vagas entre as estações ativas
+        # terceiro: enviar mensagem para cada estação ativa com as vagas que ela deve cuidar
+        
+        #return f"Estação {self.id_estacao} ativada."
+    
 
     async def requisitar_vaga(self, id_carro):
         
@@ -56,7 +69,7 @@ class Estacao:
             await self.enviar_mensagem("OK", self.ip, self.porta)       # Envia um "OK" pro endereço da stação
             await self.enviar_mensagem(f"AV {self.id_estacao} {id_vaga} {id_carro}", self.ip, self.porta+10)    # Envia um "AV" pro middleware (middleware tem q atualizar o bkp no gerente)
         else:
-            await self.enviar_mensagem("BV {id_carro}", self.ip, self.porta+10)    # Envia um "BV" (buscar vaga) para o middleware procurar vaga em outro middleware/estação
+            await self.enviar_mensagem(f"BV {id_carro}", self.ip, self.porta+10)    # Envia um "BV" (buscar vaga) para o middleware procurar vaga em outro middleware/estação
     
 
 
@@ -80,9 +93,6 @@ class Estacao:
             return "Não há vagas ocupadas para liberar."
 
 
-    async def ativar_estacao(self):
-        self.ativo = True
-        return f"Estação {self.id_estacao} ativada."
 
 
     async def finalizar_estacao(self):
