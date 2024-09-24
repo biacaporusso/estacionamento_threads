@@ -10,20 +10,26 @@ class Middleware:
     async def iniciar_socket(self):
         # Inicializa o servidor assíncrono do middleware
         server = await asyncio.start_server(self.processar_mensagem, self.ip, self.porta)
-        #print(f"Middleware iniciado em {self.ip}:{self.porta}")
+        #print(f"Middleware iniciado gem {self.ip}:{self.porta}")
 
         async with server:
             await server.serve_forever()
 
+
     async def processar_mensagem(self, reader, writer):
         data = await reader.read(100)
         message = data.decode('utf-8')
+        partes = message.split()
+        comando = partes[0]
+        id_estacao = partes[1]
+        id_vaga = partes[2]
+        id_carro = partes[3]
         print(f"Middleware {self.ip}:{self.porta} recebeu comando: {message}")
 
-        if message == "BV":  # Comando buscar vaga
+        if comando == "BV":  # Comando buscar vaga
             response = await self.buscar_vaga()
-        elif message == "AV":  # Atualizar vaga (comando vindo da estação)
-            response = await self.atualizar_bkp_gerente()
+        elif comando == "AV":  # Atualizar vaga (comando vindo da estação)
+            await self.enviar_mensagem(f"AV {id_estacao} {id_vaga} {id_carro}", self.ip, 5555) # passar a mensagem atualizar vaga para o backup do gerente
         else:
             response = "Comando não reconhecido"
 
@@ -31,9 +37,22 @@ class Middleware:
         await writer.drain()
         writer.close()
 
+
+    # Função para enviar mensagens ao middleware
+    async def enviar_mensagem(self, mensagem, ip, porta):
+        try:
+            reader, writer = await asyncio.open_connection(self.ip, porta)
+            writer.write(mensagem.encode())
+            await writer.drain()
+            writer.close()
+            await writer.wait_closed()
+        except Exception as e:
+            print(f"Erro ao conectar ao middleware: {e}")
+
+
     async def buscar_vaga(self):
         # Verifica se há vagas na estação correspondente
-        if self.estacao.vagas_ocupadas < self.estacao.total_vagas:
+        if len(self.estacao.vagas_ocupadas) < self.estacao.total_vagas:
             self.estacao.vagas_ocupadas += 1
             return "OK"  # Vaga encontrada
         else:
