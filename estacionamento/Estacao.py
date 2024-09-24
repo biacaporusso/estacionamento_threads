@@ -1,38 +1,89 @@
 import asyncio
-from Vaga import Vaga
-import socket
 
-# Classe Estacao que representa uma estação com vagas e status de ativação
 class Estacao:
     def __init__(self, id_estacao, ip, porta, total_vagas):
-        self.id_estacao = id_estacao  
+        self.id_estacao = id_estacao
         self.ip = ip
         self.porta = porta
-        self.total_vagas = total_vagas  # Número total de vagas
-        self.ativada = False  # A estação começa desativada
-        self.vagas_ocupadas = {}  # Dicionário que mapeia a vaga ao ID do carro
-        self.proxima_vaga = 1  # Controle para definir a próxima vaga disponível
-        self.socket_estacao = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.total_vagas = total_vagas
+        self.vagas_ocupadas = 0
+        self.ativo = False  # Estação começa inativa
+        self.server_socket = None  # Referência ao socket da estação
 
-    def ativar(self):
-        if not self.ativada:
-            self.ativada = True  # Ativa a estação
-            #print(f"Estação {self.id_estacao} ativada.")
-            #return "OK"
+    async def iniciar_socket(self):
+        # Inicializa o socket usando asyncio para comunicação assíncrona
+        self.server_socket = await asyncio.start_server(self.processar_comando, self.ip, self.porta)
+        print(f"Estação {self.id_estacao} está escutando em {self.ip}:{self.porta}")
+        async with self.server_socket:
+            await self.server_socket.serve_forever()
+
+
+    async def processar_comando(self, reader, writer):
+        data = await reader.read(100)
+        message = data.decode('utf-8')
+        print(f"Estação {self.id_estacao} recebeu comando: {message}")
+
+        if message.startswith("RV"):
+            response = await self.requisitar_vaga()
+        elif message.startswith("LV"):
+            response = await self.liberar_vaga()
+        elif message.startswith("AE"):
+            response = await self.ativar_estacao()
+        elif message.startswith("FE"):
+            response = await self.finalizar_estacao()
         else:
-            print(f"Estação {self.id_estacao} já está ativada.")
-            #return "Já ativada"
+            response = "Comando inválido."
 
-    def desativar(self):
-        self.ativada = False  # Desativa a estação
-        print(f"Estação {self.id_estacao} desativada.")
-        #return "OK"
+        writer.write(response.encode('utf-8'))
+        await writer.drain()
+        writer.close()
 
-    def vagas_livres(self):
-        return self.total_vagas - self.vagas_ocupadas()
+
+    async def requisitar_vaga(self):
+        if self.vagas_ocupadas < self.total_vagas:
+            self.vagas_ocupadas += 1
+            print("Carro conseguiu vaga.")
+            await self.enviar_mensagem("OK", self.ip, self.porta)       # Envia um "OK" pro endereço da stação
+            await self.enviar_mensagem("AV", self.ip, self.porta+10)    # Envia um "AV" pro middleware (middleware tem q atualizar o bkp no gerente)
+        else:
+            await self.enviar_mensagem("BV", self.ip, self.porta+10)    # Envia um "BV" (buscar vaga) para o middleware procurar vaga em outro middleware/estação
+
+
+    # Função para enviar mensagens ao middleware
+    async def enviar_mensagem(self, mensagem, ip, porta):
+        try:
+            reader, writer = await asyncio.open_connection(self.ip, porta)
+            writer.write(mensagem.encode())
+            await writer.drain()
+            writer.close()
+            await writer.wait_closed()
+        except Exception as e:
+            print(f"Erro ao conectar ao middleware: {e}")
+
+
+    async def liberar_vaga(self):
+        if self.vagas_ocupadas > 0:
+            self.vagas_ocupadas -= 1
+            return f"Vaga liberada. Total ocupadas: {self.vagas_ocupadas}."
+        else:
+            return "Não há vagas ocupadas para liberar."
+
+
+    async def ativar_estacao(self):
+        self.ativo = True
+        return f"Estação {self.id_estacao} ativada."
+
+
+    async def finalizar_estacao(self):
+        self.ativo = False
+        return f"Estação {self.id_estacao} finalizada."
+
+
+
+    ## =========================================================================================================
     
 
-    async def requisitar_vaga(self, id_carro):
+    async def my_requisitar_vaga(self, id_carro):
         # Verifica se ainda há vagas disponíveis
         if len(self.vagas_ocupadas) < self.total_vagas:
             # Encontra a próxima vaga disponível
@@ -44,45 +95,19 @@ class Estacao:
 
                     # Envia um "OK" pro endereço da stação
                     await self.enviar_mensagem("OK", self.ip, self.porta)
-                    # Envia um "atualizar" pro middleware (middleware tem q atualizar o bkp no gerente)
-                    await self.enviar_mensagem("atualizar", self.ip, self.porta+10)
+                    # Envia um "AV" pro middleware (middleware tem q atualizar o bkp no gerente)
+                    await self.enviar_mensagem("AV", self.ip, self.porta+10)
                     return True
 
-        # Se não houver vaga, envia "BV" ao middleware
+        # Se não houver vaga, envia "BV" ao middleware (buscar vaga em outra estação)
         print(f'Nenhuma vaga disponível na estação {self.id_estacao}.')
         await self.enviar_mensagem("BV", self.ip, self.porta+10)
         return False
 
 
-    # Função para enviar mensagens ao middleware
-    async def enviar_mensagem(self, mensagem, ip, porta):
-        try:
-            reader, writer = await asyncio.open_connection(self.ip, porta)
-            writer.write(mensagem.encode())
-            await writer.drain()
-            #print(f"Mensagem '{mensagem}' enviada para o middleware {self.ip}:{middleware_porta}.")
-            writer.close()
-            await writer.wait_closed()
-        except Exception as e:
-            print(f"Erro ao conectar ao middleware: {e}")
 
 
 
-
-
-
-    # ======= IGNORA POR ENQUANTO ==========
-
-    def liberar_vaga(self, id_carro):
-        # Procura a vaga ocupada pelo carro
-        for vaga, carro in self.vagas_ocupadas.items():
-            if carro == id_carro:
-                # Libera a vaga
-                del self.vagas_ocupadas[vaga]
-                print(f'Vaga {vaga} liberada pelo carro {id_carro}.')
-                return True  # Retorna sucesso na liberação
-        print(f'Carro {id_carro} não encontrado em nenhuma vaga.')
-        return False  # Carro não encontrado
 
     # interperetar os comandos aqui, 
     # só atualizar o bkp (manager)
