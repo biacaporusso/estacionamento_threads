@@ -1,8 +1,10 @@
+import asyncio
 import socket
 import threading
 from Estacao import Estacao
+from Middleware import Middleware
 
-# Função para iniciar o servidor da estação
+# ============= ignorar essa função por enquanro ==============
 def iniciar_servidor(ip, porta, estacao):
     servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
@@ -57,6 +59,8 @@ def iniciar_servidor(ip, porta, estacao):
 # Função para ler o arquivo de estações e retornar uma lista de objetos Estacao
 def ler_arquivo_estacoes():
     estacoes = []
+    middlewares = []
+
     with open('file.txt', 'r') as file:
         for line in file:
             partes = line.split()
@@ -65,25 +69,58 @@ def ler_arquivo_estacoes():
                 ip = partes[1]
                 porta = int(partes[2])
                 total_vagas = 5  # Definimos um número fixo de vagas por estação
-                estacao = Estacao(id_estacao, total_vagas)
-                estacoes.append((ip, porta, estacao))
+
+                # cria a estação
+                estacao = Estacao(id_estacao, ip, porta, total_vagas)
+                # estacoes.append((ip, porta, estacao))
+
+                # cria o middleware correspondente
+                middleware = Middleware(ip, porta+10)
+                middlewares.append(middleware)
+
+                # lista circular de middlewares
+                for i in range(len(middlewares)):
+                    next_index = (i + 1) % len(middlewares)  # Calcula o próximo middleware de forma circular
+                    middlewares[i].proximo_middleware = middlewares[next_index]
+
     return estacoes
 
-# Função principal para iniciar servidores para todas as estações
-def main():
-    estacoes = ler_arquivo_estacoes()  # Lê o arquivo file.txt e cria as estações
 
-    threads = []
+async def start_servidor(ip, porta, estacao):
+    server = await asyncio.start_server(estacao, ip, porta)
+    async with server:
+        print(f'Servidor da estação {estacao} iniciado em {ip}:{porta}')
+        await server.serve_forever()  # Mantém o servidor ativo
 
-    # Inicia um servidor em cada porta em threads separadas
+
+
+async def main():
+
+    estacoes = ler_arquivo_estacoes()  # Lê o arquivo file.txt e cria as estações e seus respectivos middlewares
+    
+    tasks = []
+
+    # Inicia um servidor em cada porta de maneira assíncrona
     for ip, porta, estacao in estacoes:
-        thread = threading.Thread(target=iniciar_servidor, args=(ip, porta, estacao))
-        threads.append(thread)
-        thread.start()
+        task = asyncio.create_task(start_servidor(ip, porta, estacao))
+        tasks.append(task)
 
-    # Mantém a execução principal aguardando o término das threads
-    for thread in threads:
-        thread.join()
+    # Aguarda a execução de todas as tasks de forma simultânea
+    await asyncio.gather(*tasks)
+
+# Executa a função main
+asyncio.run(main())
 
 if __name__ == "__main__":
     main()
+
+
+
+# classe middleware tbm tem q ter socket -> estação 8080 middleware correspondente 8081 
+# middleware que vai ver se a estação tem vaga livre 
+# passar por aprametro no middleware ip e porta tanto da estação quanto do outro middleware q será acessado
+# (talvez) usar async ao inves de thread
+# RV: rv, update rv e foward rv 
+# RV 456 -> id do carro
+
+# manager vai ser o bkp e a falha
