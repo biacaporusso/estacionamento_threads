@@ -1,8 +1,5 @@
 AE 3
-VD 3
 RV 3
-VD 3
-FE 3
 RV 3
 RV 3
 RV 3
