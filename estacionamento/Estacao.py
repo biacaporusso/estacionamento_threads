@@ -26,7 +26,7 @@ class Estacao:
         print("Message: ", message)
 
         comando, *args = message.split()  # Divide a mensagem em partes
-        #print(args[0], args[1])
+        # print(args[0], args[1])
         print(f"Estação {self.id_estacao} recebeu comando: {comando}")
 
         if comando == "RV":

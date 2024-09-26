@@ -3,7 +3,6 @@ from Estacao import Estacao
 from Middleware import Middleware
 from Gerente import Gerente
 
-vagas = 20
 porta_gerente = 5524
 
 # Função para ler o arquivo de estações e retornar uma lista de objetos Estacao

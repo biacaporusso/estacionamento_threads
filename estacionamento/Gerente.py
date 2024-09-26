@@ -1,5 +1,6 @@
 import asyncio
 
+vagas = 5
 porta_gerente = 5524
 
 class Gerente:
@@ -13,12 +14,10 @@ class Gerente:
                 "porta": portas_middlewares[id-1],
                 "id_vagas_livres": [],
                 "id_vagas_ocupadas": [],
-                "id_vaga_ocupada_carro": [],
                 "estacao_ativa": False
                 # "porta_middleware": None,
                 # "ultimo_ping": None
             }
-
 
     async def iniciar_socket_gerente(self):
         server = await asyncio.start_server(self.processar_mensagem, self.ip, self.porta)
@@ -35,11 +34,11 @@ class Gerente:
 
         # Processa mensagens para atualizar o backup
         if comando == "AV":
-            response = self.atualizar_backup(args[0], args[1], args[2])    # id_estacao id_vaga  id_carro
+            response = self.ocupar_vaga(args[0], args[1], args[2])    # id_estacao id_vaga  id_carro
         elif comando == "AE":
-            id_estacao = int(args[0][-1])
-            print(f'{id_estacao}')
-            response = self.ativar_estacao(id_estacao)  # id_estacao
+            id_nova_estacao = int(args[0][-1])
+            print(f'{id_nova_estacao}')
+            response = self.ativar_estacao(id_nova_estacao)  # id_estacao
         elif comando == "BV":
             response = self.buscar_vaga()
         elif comando == "VD":
@@ -51,7 +50,7 @@ class Gerente:
         # writer.write(response.encode('utf-8'))
         # await writer.drain()
         # #writer.close()
-        await self.enviar_mensagem(response, self.backup_estacoes[id_estacao]["ip"], self.backup_estacoes[id_estacao]["porta"])
+        await self.enviar_mensagem(response, self.backup_estacoes[id_nova_estacao]["ip"], self.backup_estacoes[id_nova_estacao]["porta"]) # Victor mexi aqui pra id nova estacao antes tava id estacao
 
 
     # Função para enviar mensagens ao middleware
@@ -66,18 +65,76 @@ class Gerente:
             print(f"Erro ao conectar ao middleware: {e}")
 
 
-    def ativar_estacao(self, id_estacao):
-        self.backup_estacoes[id_estacao]["estacao_ativa"] = True
-        #response = f"{id_estacao} ativada"
+    def ativar_estacao(self, id_nova_estacao):
+        nenhuma_estacao_ativa = True
+        for id_estacao in self.backup_estacoes:
+            if self.backup_estacoes[id_estacao]["estacao_ativa"]:
+                nenhuma_estacao_ativa = False
+        if nenhuma_estacao_ativa:
+            for id_vaga in range(0, vagas):
+                self.backup_estacoes[id_nova_estacao]["id_vagas_livres"].append(id_vaga)
+            
+            self.backup_estacoes[id_nova_estacao]["estacao_ativa"] = True
+            print(self.backup_estacoes)
+        else:
+            vagas_ocupadas = []
+            vagas_livres = []
+            total_estacoes_ativas = 1
+            for id_estacao in self.backup_estacoes:
+                if self.backup_estacoes[id_estacao]["estacao_ativa"]:
+                    vagas_ocupadas.extend(self.backup_estacoes[id_estacao]["id_vagas_ocupadas"])
+                    vagas_livres.extend(self.backup_estacoes[id_estacao]["id_vagas_livres"])
+                    total_estacoes_ativas+=1
+
+            qtd_vagas_ocupadas_estacao = int(len(vagas_ocupadas)/total_estacoes_ativas)
+
+            for id_estacao in self.backup_estacoes:
+                if self.backup_estacoes[id_estacao]["estacao_ativa"]:
+                    vagas_ocupadas = self.adicionar_vagas(id_estacao, vagas_ocupadas, "id_vagas_ocupadas", qtd_vagas_ocupadas_estacao)
+
+            self.backup_estacoes[id_nova_estacao]["id_vagas_ocupadas"].extend(vagas_ocupadas)
+
+            qtd_vagas_livres_estacao = int(len(vagas_livres)/total_estacoes_ativas)
+
+            for id_estacao in self.backup_estacoes:
+                if self.backup_estacoes[id_estacao]["estacao_ativa"]:
+                    vagas_livres = self.adicionar_vagas(id_estacao, vagas_livres, "id_vagas_livres", qtd_vagas_livres_estacao)
+
+            self.backup_estacoes[id_nova_estacao]["id_vagas_livres"].extend(vagas_livres)
+            
+        print(self.backup_estacoes)
+
         response = "ativada"
         return response
 
 
-    async def atualizar_backup(self, id_estacao, id_vaga, id_carro):
+    def adicionar_vagas(self, id_estacao, vagas, tipo_vaga, qtd_vagas):
+        print("adicionar_vagas:")
+        aux_vagas = vagas
+        count = 0
+        for indice in  range(0, qtd_vagas):
+            if self.backup_estacoes[id_estacao]["estacao_ativa"]:
+                
+                if count == 0:
+                    count+=1
+                    self.backup_estacoes[id_estacao][tipo_vaga] = []
+
+                self.backup_estacoes[id_estacao][tipo_vaga].append(aux_vagas[indice])
+                vagas.remove(aux_vagas[indice])
+        return vagas
+        
+
+    async def ocupar_vaga(self, id_estacao, id_vaga, id_carro):
         self.backup_estacoes[id_estacao]["id_vagas_livres"].remove(id_vaga)
-        self.backup_estacoes[id_estacao]["id_vagas_ocupadas"].append(id_vaga)
-        self.backup_estacoes[id_estacao]["id_vaga_ocupada_carro"].append(id_carro)
-        response = f"Backup atualizado"
+        self.backup_estacoes[id_estacao]["id_vagas_ocupadas"].append({"id_vaga": id_vaga, "id_carro": id_carro})
+        response = f"Vaga ocupada."
+        return response
+
+
+    async def liberar_vaga(self, id_estacao, id_vaga, id_carro):
+        self.backup_estacoes[id_estacao]["id_vagas_ocupadas"].remove({"id_vaga": id_vaga, "id_carro": id_carro})
+        self.backup_estacoes[id_estacao]["id_vagas_livres"].append(id_vaga)
+        response = f"Vaga liberada"
         return response
 
     

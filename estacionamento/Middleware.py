@@ -31,11 +31,9 @@ class Middleware:
             response = await self.enviar_mensagem(f"AV {args[0]} {args[1]} {args[2]}", self.ip, porta_gerente) # id_estacao id_vaga id_carro
         elif comando == "AE":
             response = await self.enviar_mensagem(f"AE {args[0]}", self.ip, porta_gerente) # AE id_estação => passar a mensagem ativar estação para o backup do gerente
-            print("respostaaaaaa: ", response)
         elif comando == "VD":
             response = await self.enviar_mensagem("VD", self.ip, porta_gerente)
         elif comando == "ativada":
-            print("testeeeeeeeee")
             await self.enviar_mensagem("ativada", self.ip, self.porta-10)
         else:
             response = "Comando não reconhecido"
