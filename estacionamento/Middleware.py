@@ -114,7 +114,6 @@ class Middleware:
 
 
     async def requisitar_vaga(self, id_estacao, id_carro):
-        print("????entrou requisitar vaga", self.vagas)
         # verificar se há vaga na estação
         for i in range(len(self.vagas)):
             vaga = self.vagas[i]
@@ -143,6 +142,7 @@ class Middleware:
         for i in range(len(self.vagas)):
             vaga = self.vagas[i]
             if vaga[1] == id_carro:
+                print(" |||||||||| entrou no antes atualizar vaga de LV")
                 self.vagas[i] = (vaga[0], None)
                 await self.enviar_mensagem(f"atualizar_vaga.{self.estacao.id_estacao}.{self.vagas}", self.ip, porta_gerente)
                 return "liberou"

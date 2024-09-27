@@ -1,10 +1,10 @@
-1:{'ip': '127.0.0.1', 'porta': 8891, 'vagas': [(9, "'km7bo5'")], 'estacao_ativa': True}
-2:{'ip': '127.0.0.1', 'porta': 8892, 'vagas': [(4, "'ohxwys'")], 'estacao_ativa': True}
-3:{'ip': '127.0.0.1', 'porta': 8893, 'vagas': [(6, "'q29ip7'")], 'estacao_ativa': True}
-4:{'ip': '127.0.0.1', 'porta': 8894, 'vagas': [(1, "'t8jhfh'")], 'estacao_ativa': True}
-5:{'ip': '127.0.0.1', 'porta': 8895, 'vagas': [(7, "'0005tt'")], 'estacao_ativa': True}
-6:{'ip': '127.0.0.1', 'porta': 8896, 'vagas': [(2, "'fss4fd'")], 'estacao_ativa': True}
-7:{'ip': '127.0.0.1', 'porta': 8897, 'vagas': [(8, "'bq587j'")], 'estacao_ativa': True}
-8:{'ip': '127.0.0.1', 'porta': 8898, 'vagas': [(3, "'jl6nou'")], 'estacao_ativa': True}
-9:{'ip': '127.0.0.1', 'porta': 8899, 'vagas': [(5, "'l43kti'")], 'estacao_ativa': True}
-10:{'ip': '127.0.0.1', 'porta': 8900, 'vagas': [(0, "'ijooen'")], 'estacao_ativa': True}
+1:{'ip': '127.0.0.1', 'porta': 8891, 'vagas': [(8, None), (9, None)], 'estacao_ativa': True}
+2:{'ip': '127.0.0.1', 'porta': 8892, 'vagas': [(3, "'0005tt'"), (4, "'fss4fd'")], 'estacao_ativa': True}
+3:{'ip': '127.0.0.1', 'porta': 8893, 'vagas': [(5, None), (6, None)], 'estacao_ativa': True}
+4:{'ip': '127.0.0.1', 'porta': 8894, 'vagas': [(0, "'t8jhfh'"), (1, "'km7bo5'")], 'estacao_ativa': True}
+5:{'ip': '127.0.0.1', 'porta': 8895, 'vagas': [(7, None)], 'estacao_ativa': True}
+6:{'ip': '127.0.0.1', 'porta': 8896, 'vagas': [(2, None)], 'estacao_ativa': True}
+7:{'ip': '127.0.0.1', 'porta': 8897, 'vagas': [], 'estacao_ativa': False}
+8:{'ip': '127.0.0.1', 'porta': 8898, 'vagas': [], 'estacao_ativa': False}
+9:{'ip': '127.0.0.1', 'porta': 8899, 'vagas': [], 'estacao_ativa': False}
+10:{'ip': '127.0.0.1', 'porta': 8900, 'vagas': [], 'estacao_ativa': False}

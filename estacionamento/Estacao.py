@@ -41,9 +41,10 @@ class Estacao:
 
 
         elif message.startswith("LV"):
-            comando = message.split()
+            comando = message.split(".")
             writer.write(f"Liberou vaga.".encode())
             await writer.drain()
+            print("!!!!!!!!!",comando[1])
             await self.enviar_mensagem(f"LV {comando[1]}", self.ip, self.porta+10)    # Envia um "AV" pro middleware (middleware tem q atualizar o bkp no gerente)
 
 
