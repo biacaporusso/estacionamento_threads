@@ -1,9 +1,9 @@
 import asyncio
-from llist import sllist, sllistnode
 import threading
+from llist import sllist
 
 porta_gerente = 5524
-vagas_total = 10
+vagas_total = 3
 lista_ativos = sllist()
 
 class Middleware:
@@ -33,21 +33,30 @@ class Middleware:
 
         if message.startswith("BV"):  # Comando buscar vaga
             # procurar na lista de ativos se tem vaga livre
-            self.teste_BV(lista_ativos)
+            await self.teste_BV(lista_ativos)
             #response = await self.enviar_mensagem(f"BV", self.ip, porta_gerente) #(args[1]) # nesse caso, args[1] é o id_carro 
+        
         elif message.startswith("AV"):
             msg = message.split()
-            response = await self.enviar_mensagem(f"AV {msg[0]} {msg[1]} {msg[2]}", self.ip, porta_gerente) # id_estacao id_vaga id_carro
+            response = await self.enviar_mensagem(f'AV {msg[1].replace("Station", "")} {msg[2]} {msg[3]}', self.ip, porta_gerente) # id_estacao id_vaga id_carro
+        
         elif message.startswith("AE"):
             msg = message.split()
             await self.teste_AE()
-            
             # teste.join()
-            # response = await self.enviar_mensagem(f"AE {msg[1]}", self.ip, porta_gerente) # AE id_estação => passar a mensagem ativar estação para o backup do gerente
+            response = await self.enviar_mensagem(f"AE.{msg[1]}.{self.vagas}", self.ip, porta_gerente) # AE id_estação => passar a mensagem ativar estação para o backup do gerente
+            response2 = await self.enviar_mensagem(f"ativada.{self.vagas}", self.ip, self.porta-10) # AE id_estação => passar a mensagem ativar estação para a estação
             #print("\n ########      Ativos: ", lista_ativos)
         
         elif message.startswith("VD"):
-            response = await self.enviar_mensagem("VD", self.ip, porta_gerente)
+            msg = message.split(".")
+            print(">>>>> VD:: ", msg[1])
+            # print(">>>>> VD:: )
+            response = await self.enviar_mensagem(f"VD.{msg[1]}", self.ip, porta_gerente)
+
+        elif message.startswith("vd_response"):
+            msg = message.split(".")
+            response = await self.enviar_mensagem(f"vd_response.{msg[1]}", self.ip, self.porta-10)
         
         elif message.startswith("nvagas"):
             print(">>>>> entrou nvagas middleware") 
@@ -66,7 +75,8 @@ class Middleware:
             vagas_emprestando = self.vagas[:len(self.vagas)//2]
             self.vagas = self.vagas[len(self.vagas)//2:]
             response = await self.enviar_mensagem(f"response_emprestar_vagas.{vagas_emprestando}", msg[1], int(msg[2]))
-        
+            response = await self.enviar_mensagem(f"AE.{self.estacao.id_estacao}.{self.vagas}", self.ip, porta_gerente)
+
         elif message.startswith("response_emprestar_vagas"):
             print(">>>>> entrou response emprestar middleware ", message)
             self.response = message.split(".")[1]
@@ -110,24 +120,17 @@ class Middleware:
                     max_estacao = int(response)
                     index = i
             print("max_estacao, index: ", max_estacao, index)
-            
             self.response_future = asyncio.Future()  # Create a new Future for each request
-
             bla = await self.enviar_mensagem(f"emprestar_vagas {self.ip} {self.porta}", lista_ativos[index].ip, lista_ativos[index].porta)
-            
             response = await self.response_future  # Await the response from processar_mensagem
-
             # transformar response de string para lista
             print("response: ", self.response)
             temp = self.response.replace("[", "").replace("]", "").split(",")
             self.vagas = [int(i) for i in temp]
             print("vagas pos ativar: ", self.vagas)
 
-
             # distribuir vagas
-
             lista_ativos.append(self) #
-
         else:
             self.vagas = [i for i in range(0, vagas_total)]
             print("primeira ativação vagas: ", self.vagas)
@@ -149,7 +152,6 @@ class Middleware:
             print(f"Conectado a {ip}:{porta}")
             writer.write(mensagem.encode())
             await writer.drain()
-            print("Mensagem enviada")
 
             writer.close()
             await writer.wait_closed()

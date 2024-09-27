@@ -34,16 +34,27 @@ class Gerente:
         # Processa mensagens para atualizar o backup
         if message.startswith("AV"):
             msg = message.split()
-            response = self.ocupar_vaga(msg[0], msg[1], msg[2])    # id_estacao id_vaga  id_carro
+            response = await self.ocupar_vaga(msg[1], msg[2], msg[3])    # id_estacao id_vaga  id_carro
+        
         elif message.startswith("AE"):
-            msg = message.split()
-            id_nova_estacao = int(msg[1][-1])
+            msg = message.split(".")
+            id_nova_estacao = int(msg[1].replace("Station", ""))
             print(f'{id_nova_estacao}')
-            response = self.ativar_estacao(id_nova_estacao)  # id_estacao
+            #response = self.ativar_estacao(id_nova_estacao, vagas)  # id_estacao
+            self.backup_estacoes[id_nova_estacao]["estacao_ativa"] = True
+            temp = msg[2].replace("[", "").replace("]", "").split(",")
+            self.backup_estacoes[id_nova_estacao]["id_vagas_livres"] = [int(i) for i in temp]
+            with open('backup_estacoes.txt', 'w') as f:
+                for key in self.backup_estacoes.keys():
+                    f.write(f'{key}:{self.backup_estacoes[key]}\n')
+
         elif message.startswith("BV"):
             response = self.buscar_vaga()
-        elif message.startswith("VD"):
-            response = self.vagas_disponiveis()
+
+        elif message.startswith("VD"): # VD 3
+            msg = message.split(".")
+            response = await self.vagas_disponiveis(msg[1])
+            await self.enviar_mensagem(response, self.backup_estacoes[int(msg[1])]["ip"], self.backup_estacoes[int(msg[1])]["porta"])
         else:
             print("Nao chegou comando pro gerente")
 
@@ -51,7 +62,7 @@ class Gerente:
         # writer.write(response.encode('utf-8'))
         # await writer.drain()
         # #writer.close()
-        await self.enviar_mensagem(response, self.backup_estacoes[id_nova_estacao]["ip"], self.backup_estacoes[id_nova_estacao]["porta"]) # Victor mexi aqui pra id nova estacao antes tava id estacao
+        # await self.enviar_mensagem(response, self.backup_estacoes[id_nova_estacao]["ip"], self.backup_estacoes[id_nova_estacao]["porta"]) # Victor mexi aqui pra id nova estacao antes tava id estacao
 
 
     # Função para enviar mensagens ao middleware
@@ -64,6 +75,66 @@ class Gerente:
             await writer.wait_closed()
         except Exception as e:
             print(f"Erro ao conectar ao middleware: {e}")
+
+
+
+
+    def adicionar_vagas(self, id_estacao, vagas, tipo_vaga, qtd_vagas):
+        print("adicionar_vagas:")
+        aux_vagas = vagas
+        count = 0
+        for indice in  range(0, qtd_vagas):
+            if self.backup_estacoes[id_estacao]["estacao_ativa"]:
+                
+                if count == 0:
+                    count+=1
+                    self.backup_estacoes[id_estacao][tipo_vaga] = []
+
+                self.backup_estacoes[id_estacao][tipo_vaga].append(aux_vagas[indice])
+                vagas.remove(aux_vagas[indice])
+        return vagas
+        
+
+    async def ocupar_vaga(self, id_estacao, id_vaga, id_carro):
+        self.backup_estacoes[id_estacao]["id_vagas_livres"].remove(id_vaga)
+        self.backup_estacoes[id_estacao]["id_vagas_ocupadas"].append({"id_vaga": id_vaga, "id_carro": id_carro})
+        with open('backup_estacoes.txt', 'a') as f:
+            for key in self.backup_estacoes.keys():
+                f.write(f'{key}:{self.backup_estacoes[key]}\n')
+        self.enviar_mensagem(f"ocupada", self.backup_estacoes[id_estacao]["ip"], self.backup_estacoes[id_estacao]["porta"]+10)
+        #response = f"Vaga ocupada."
+        #return response
+
+
+    async def liberar_vaga(self, id_estacao, id_vaga, id_carro):
+        self.backup_estacoes[id_estacao]["id_vagas_ocupadas"].remove({"id_vaga": id_vaga, "id_carro": id_carro})
+        self.backup_estacoes[id_estacao]["id_vagas_livres"].append(id_vaga)
+        response = f"Vaga liberada"
+        return response
+
+    
+    async def vagas_disponiveis(self, id_to_send):
+        # Verifica quantas vagas estão disponíveis e ocupadas em cada estação ativa
+        mensagem = "vd_response."
+        for id_estacao in self.backup_estacoes.keys():
+            mensagem += f"{id_estacao}:{len(self.backup_estacoes[id_estacao]['id_vagas_livres'])}-{len(self.backup_estacoes[id_estacao]['id_vagas_ocupadas'])}   "
+        
+        # for key in self.backup_estacoes.keys():
+        #             f.write(f'{key}:{self.backup_estacoes[key]}\n')
+        print(mensagem)
+        #self.enviar_mensagem(mensagem, self.backup_estacoes[id_to_send]["ip"], self.backup_estacoes[id_to_send]["porta"]+10)
+        return mensagem
+        
+
+    async def buscar_vaga(self):
+        for i in range(0, len(self.backup_estacoes)):
+            if self.backup_estacoes[i]["estacao_ativa"]:
+                response = f"{self.backup_estacoes[i]['ip']} {self.backup_estacoes[i]['porta']}"
+                # talvez retornar porta do middleware correspondente a ele
+            else:
+                print("Nenhuma estaçaõ ativa")
+        return response
+    
 
 
     def ativar_estacao(self, id_nova_estacao):
@@ -106,55 +177,4 @@ class Gerente:
         print(self.backup_estacoes)
 
         response = f'ativada.{self.backup_estacoes[id_nova_estacao]["id_vagas_livres"]}'
-        return response
-
-
-    def adicionar_vagas(self, id_estacao, vagas, tipo_vaga, qtd_vagas):
-        print("adicionar_vagas:")
-        aux_vagas = vagas
-        count = 0
-        for indice in  range(0, qtd_vagas):
-            if self.backup_estacoes[id_estacao]["estacao_ativa"]:
-                
-                if count == 0:
-                    count+=1
-                    self.backup_estacoes[id_estacao][tipo_vaga] = []
-
-                self.backup_estacoes[id_estacao][tipo_vaga].append(aux_vagas[indice])
-                vagas.remove(aux_vagas[indice])
-        return vagas
-        
-
-    async def ocupar_vaga(self, id_estacao, id_vaga, id_carro):
-        self.backup_estacoes[id_estacao]["id_vagas_livres"].remove(id_vaga)
-        self.backup_estacoes[id_estacao]["id_vagas_ocupadas"].append({"id_vaga": id_vaga, "id_carro": id_carro})
-        
-        self.enviar_mensagem(f"ocupada", self.backup_estacoes[id_estacao]["ip"], self.backup_estacoes[id_estacao]["porta"]+10)
-        #response = f"Vaga ocupada."
-        #return response
-
-
-    async def liberar_vaga(self, id_estacao, id_vaga, id_carro):
-        self.backup_estacoes[id_estacao]["id_vagas_ocupadas"].remove({"id_vaga": id_vaga, "id_carro": id_carro})
-        self.backup_estacoes[id_estacao]["id_vagas_livres"].append(id_vaga)
-        response = f"Vaga liberada"
-        return response
-
-    
-    async def vagas_disponiveis(self):
-        # Verifica quantas vagas estão disponíveis e ocupadas em cada estação ativa
-        for id_estacao in self.backup_estacoes:
-            mensagem = f"{id_estacao}:{len(self.backup_estacoes['id_vagas_livres'])}-{len(self.backup_estacoes['id_vagas_ocupadas'])}  "
-        
-        print(mensagem)
-        return mensagem
-        
-
-    async def buscar_vaga(self):
-        for i in range(0, len(self.backup_estacoes)):
-            if self.backup_estacoes[i]["estacao_ativa"]:
-                response = f"{self.backup_estacoes[i]['ip']} {self.backup_estacoes[i]['porta']}"
-                # talvez retornar porta do middleware correspondente a ele
-            else:
-                print("Nenhuma estaçaõ ativa")
         return response

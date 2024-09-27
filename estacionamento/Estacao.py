@@ -11,6 +11,7 @@ class Estacao:
         self.vagas_ocupadas = {} # dicionario: id_vaga => id_carro
         self.ativo = False  # Estação começa inativa
         self.server_socket = None  # Referência ao socket da estação        implementar dicionario
+        writers = {}  # Dicionário de writers associados a cada estação
 
     async def iniciar_socket_estacao(self):
         # Inicializa o socket usando asyncio para comunicação assíncrona
@@ -35,6 +36,7 @@ class Estacao:
             writer.write(f"Chegou carro.".encode())
             await writer.drain()
             response = await self.requisitar_vaga(comando[1])  # Passa o parâmetro para a função - args[0] é o id do carro
+        
         elif message.startswith("LV"):
             writer.write(f"Liberou vaga.".encode())
             await writer.drain()
@@ -51,12 +53,35 @@ class Estacao:
             response = await self.finalizar_estacao()
 
         elif message.startswith("VD"):
-            response = await self.vagas_disponiveis(self.ip, self.porta)
+            print("entrou no VD")
+            # Identifica a estação (ex: Station1, Station2 etc)
+            station_id = self.id_estacao.replace("Station", "")
+            # Armazena o writer associado ao ID da estação
+            #self.writers[station_id] = writer
+            print("station id e writer: ", station_id)
+            # Agora processa a requisição de vagas disponíveis
+            response = await self.vagas_disponiveis(self.ip, self.porta, station_id)
+
+        elif message.startswith("vd_response"):
+            # Extrai o ID da estação (ou outra identificação)
+            lista_estacoes = message.split(".")  # Supondo que o ID da estação está na mensagem
+            print(" lista estacoes ", lista_estacoes[1])
+            await self.enviar_mensagem(f"vd_response.{lista_estacoes[1]}", self.ip, 5554)  # Envia a resposta para o middleware
+            # Recupera o writer associado a essa estação
+            # writer = self.writers.get(station_id)
+            # if writer:
+            #     # Monta a resposta
+            #     response = "Sua resposta formatada aqui"
+            #     writer.write(response.encode('utf-8'))
+            #     await writer.drain()
+            # else:
+            #     print(f"Nenhum writer encontrado para a estação {station_id}")
 
         elif message.startswith("ativada"):
             print("===== entrou ativada estacao")
             vagas_livres = message.split(".")
             vagas_livres = vagas_livres[1].replace("[", "").replace("]", "").split(",")
+            vagas_livres = [int(vaga) for vaga in vagas_livres]
             print(" @@@@@@ vagas livres: ", vagas_livres)
             self.vagas_livres = vagas_livres
 
@@ -97,12 +122,12 @@ class Estacao:
             await self.enviar_mensagem(f"BV {id_carro}", self.ip, self.porta+10)    # Envia um "BV" (buscar vaga) para o middleware procurar vaga em outro middleware/estação
     
 
-    async def vagas_disponiveis(self, ip, porta):
+    async def vagas_disponiveis(self, ip, porta, id_estacao):
         # fazer isso para todas as estações ativas
 
         #enviar pro middleware que envia pro gerente que contem o bkacup
-        await self.enviar_mensagem("VD", ip, porta+10)
-        await self.enviar_mensagem(f"{self.id_estacao}:{len(self.vagas_livres)}-{len(self.vagas_ocupadas)}", self.ip, self.porta) 
+        await self.enviar_mensagem(f"VD.{id_estacao}", ip, porta+10)
+        #await self.enviar_mensagem(f"{self.id_estacao}:{len(self.vagas_livres)}-{len(self.vagas_ocupadas)}", self.ip, self.porta) 
 
     # Função para enviar mensagens ao middleware
     async def enviar_mensagem(self, mensagem, ip, porta):
