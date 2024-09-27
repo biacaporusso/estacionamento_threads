@@ -65,13 +65,7 @@ class Middleware:
         elif message.startswith("nvagas"):
             #print(">>>>> entrou nvagas middleware") 
             msg = message.split()
-            response = await self.enviar_mensagem(f"response_nvagas {len(self.vagas)}", msg[1], int(msg[2]))
-        
-        elif message.startswith("response_nvagas"):
-            #print(">>>>> entrou response_nvagas middleware")
-            self.response = message.split()[1]
-            if not self.response_future.done():  # Verifica se a Future já foi completada
-                self.response_future.set_result(self.response)
+            response = await self.enviar_mensagem(f"set_response.{len(self.vagas)}", msg[1], int(msg[2]))
 
         elif message.startswith("emprestar_vagas"):
             #print(">>>>> entrou emprestar middleware")
@@ -79,14 +73,8 @@ class Middleware:
             # cálculo de quantas vagas vai emprestar
             vagas_emprestando = self.vagas[:len(self.vagas)//2]
             self.vagas = self.vagas[len(self.vagas)//2:]
-            response = await self.enviar_mensagem(f"response_emprestar_vagas.{vagas_emprestando}", msg[1], int(msg[2]))
+            response = await self.enviar_mensagem(f"set_response.{vagas_emprestando}", msg[1], int(msg[2]))
             response = await self.enviar_mensagem(f"atualizar_vaga.{self.estacao.id_estacao}.{self.vagas}", self.ip, porta_gerente)
-
-        elif message.startswith("response_emprestar_vagas"):
-            #print(">>>>> entrou response emprestar middleware ", message)
-            self.response = message.split(".")[1]
-            if not self.response_future.done():  # Verifica se a Future já foi completada
-                self.response_future.set_result(self.response)
 
         elif message.startswith("vaga_livre"):
             msg = message.split()
@@ -96,17 +84,11 @@ class Middleware:
                 if vaga[1] is None:
                     self.vagas[i] = (vaga[0], msg[3])
                     await self.enviar_mensagem(f"atualizar_vaga.{self.estacao.id_estacao}.{self.vagas}", self.ip, porta_gerente)
-                    response = await self.enviar_mensagem(f"response_vaga_livre.alocada", msg[1], msg[2])
+                    response = await self.enviar_mensagem(f"set_response.alocada", msg[1], msg[2])
                     alocado = True
                     break
             if not alocado:
-                response = await self.enviar_mensagem(f"response_vaga_livre.nao_alocada", msg[1], msg[2])
-
-        elif message.startswith("response_vaga_livre"):
-            print("entrou response_vaga_livre")
-            self.response = message.split(".")[1]
-            if not self.response_future.done():  # Verifica se a Future já foi completada
-                self.response_future.set_result(self.response)
+                response = await self.enviar_mensagem(f"set_response.nao_alocada", msg[1], msg[2])
 
         elif message.startswith("liberar_carro"):
             msg = message.split()
@@ -115,10 +97,10 @@ class Middleware:
                 if vaga[1] == msg[3]: # se é o id_carro
                     self.vagas[i] = (vaga[0], None)
                     await self.enviar_mensagem(f"atualizar_vaga.{self.estacao.id_estacao}.{self.vagas}", self.ip, porta_gerente)
-                    response = await self.enviar_mensagem(f"response_liberar_carro.liberou", msg[1], msg[2])
+                    response = await self.enviar_mensagem(f"set_response.liberou", msg[1], msg[2])
                     break
         
-        elif message.startswith("response_liberar_carro"):
+        elif message.startswith("set_response"):
             self.response = message.split(".")[1]
             if not self.response_future.done():
                 self.response_future.set_result(self.response)
