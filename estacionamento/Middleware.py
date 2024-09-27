@@ -27,28 +27,18 @@ class Middleware:
     async def processar_mensagem(self, reader, writer):
         data = await reader.read(1024)
         message = data.decode('utf-8')
-        # print("message no middleware: ", message)
-        # args[0] ja e o parametro e nao o comando
         print(f"Middleware {self.ip}:{self.porta} recebeu comando: {message}")
 
-        if message.startswith("BV"):  # Comando buscar vaga
-            # procurar na lista de ativos se tem vaga livre
-            await self.teste_BV(lista_ativos)
-            #response = await self.enviar_mensagem(f"BV", self.ip, porta_gerente) #(args[1]) # nesse caso, args[1] é o id_carro 
-        
-        elif message.startswith("RV"):
+        if message.startswith("RV"):
             msg = message.split()
-            # msg[1] = id_estacao e msg[2] id_carro
-            #response = await self.requisitar_vaga(f'AV {msg[1].replace("Station", "")} {msg[2]} {msg[3]}', self.ip, porta_gerente) # id_estacao id_vaga id_carro
             await self.requisitar_vaga(msg[1], msg[2])
 
         elif message.startswith("AE"):
             msg = message.split()
             await self.teste_AE()
-            # teste.join()
             response = await self.enviar_mensagem(f"atualizar_vaga.{msg[1]}.{self.vagas}", self.ip, porta_gerente) # AE id_estação => passar a mensagem ativar estação para o backup do gerente
-            response2 = await self.enviar_mensagem(f"ativada.{self.vagas}", self.ip, self.porta-10) # AE id_estação => passar a mensagem ativar estação para a estação
-            #print("\n ########      Ativos: ", lista_ativos)
+            #response2 = await self.enviar_mensagem(f"ativada.{self.vagas}", self.ip, self.porta-10) # AE id_estação => passar a mensagem ativar estação para a estação
+
         
         elif message.startswith("LV"):
             msg = message.split()
@@ -63,12 +53,10 @@ class Middleware:
             response = await self.enviar_mensagem(f"vd_response.{msg[1]}", self.ip, self.porta-10)
         
         elif message.startswith("nvagas"):
-            #print(">>>>> entrou nvagas middleware") 
             msg = message.split()
             response = await self.enviar_mensagem(f"set_response.{len(self.vagas)}", msg[1], int(msg[2]))
 
         elif message.startswith("emprestar_vagas"):
-            #print(">>>>> entrou emprestar middleware")
             msg = message.split()
             # cálculo de quantas vagas vai emprestar
             vagas_emprestando = self.vagas[:len(self.vagas)//2]

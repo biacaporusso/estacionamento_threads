@@ -13,8 +13,6 @@ class Gerente:
                 "ip": "127.0.0.1",
                 "porta": portas_middlewares[id-1],
                 "vagas": [],
-                # "id_vagas_livres": [],
-                # "id_vagas_ocupadas": [],
                 "estacao_ativa": False
                 # "porta_middleware": None,
                 # "ultimo_ping": None
@@ -38,10 +36,7 @@ class Gerente:
             msg = message.split(".")
             id_nova_estacao = int(msg[1].replace("Station", ""))
             print(f'{id_nova_estacao}')
-            #response = self.ativar_estacao(id_nova_estacao, vagas)  # id_estacao
             self.backup_estacoes[id_nova_estacao]["estacao_ativa"] = True
-            # temp = msg[2].replace("[", "").replace("]", "").split(",")
-            # self.backup_estacoes[id_nova_estacao]["id_vagas_livres"] = [int(i) for i in temp]
             temp = msg[2].replace("[", "").replace("]", "").split(")")
             vagas = []
             for i in temp:
@@ -64,12 +59,6 @@ class Gerente:
         else:
             print("Nao chegou comando pro gerente")
 
-        # print(f"Gerente respondeu: {response}")
-        # writer.write(response.encode('utf-8'))
-        # await writer.drain()
-        # #writer.close()
-        # await self.enviar_mensagem(response, self.backup_estacoes[id_nova_estacao]["ip"], self.backup_estacoes[id_nova_estacao]["porta"]) # Victor mexi aqui pra id nova estacao antes tava id estacao
-
 
     # Função para enviar mensagens ao middleware
     async def enviar_mensagem(self, mensagem, ip, porta):
@@ -81,8 +70,6 @@ class Gerente:
             await writer.wait_closed()
         except Exception as e:
             print(f"Erro ao conectar ao middleware: {e}")
-
-
 
 
     def adicionar_vagas(self, id_estacao, vagas, tipo_vaga, qtd_vagas):
@@ -108,8 +95,6 @@ class Gerente:
             for key in self.backup_estacoes.keys():
                 f.write(f'{key}:{self.backup_estacoes[key]}\n')
         self.enviar_mensagem(f"ocupada", self.backup_estacoes[id_estacao]["ip"], self.backup_estacoes[id_estacao]["porta"]+10)
-        #response = f"Vaga ocupada."
-        #return response
 
 
     async def liberar_vaga(self, id_estacao, id_vaga, id_carro):
