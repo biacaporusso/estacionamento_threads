@@ -1,6 +1,6 @@
 import asyncio
 
-vagas = 5
+vagas = 3
 porta_gerente = 5524
 
 class Gerente:
@@ -29,19 +29,20 @@ class Gerente:
     async def processar_mensagem(self, reader, writer):
         data = await reader.read(100)
         message = data.decode('utf-8')
-        comando, *args = message.split()
         print(f"Gerente recebeu: {message}")
 
         # Processa mensagens para atualizar o backup
-        if comando == "AV":
-            response = self.ocupar_vaga(args[0], args[1], args[2])    # id_estacao id_vaga  id_carro
-        elif comando == "AE":
-            id_nova_estacao = int(args[0][-1])
+        if message.startswith("AV"):
+            msg = message.split()
+            response = self.ocupar_vaga(msg[0], msg[1], msg[2])    # id_estacao id_vaga  id_carro
+        elif message.startswith("AE"):
+            msg = message.split()
+            id_nova_estacao = int(msg[1][-1])
             print(f'{id_nova_estacao}')
             response = self.ativar_estacao(id_nova_estacao)  # id_estacao
-        elif comando == "BV":
+        elif message.startswith("BV"):
             response = self.buscar_vaga()
-        elif comando == "VD":
+        elif message.startswith("VD"):
             response = self.vagas_disponiveis()
         else:
             print("Nao chegou comando pro gerente")
@@ -104,7 +105,7 @@ class Gerente:
             
         print(self.backup_estacoes)
 
-        response = "ativada"
+        response = f'ativada.{self.backup_estacoes[id_nova_estacao]["id_vagas_livres"]}'
         return response
 
 
@@ -127,8 +128,10 @@ class Gerente:
     async def ocupar_vaga(self, id_estacao, id_vaga, id_carro):
         self.backup_estacoes[id_estacao]["id_vagas_livres"].remove(id_vaga)
         self.backup_estacoes[id_estacao]["id_vagas_ocupadas"].append({"id_vaga": id_vaga, "id_carro": id_carro})
-        response = f"Vaga ocupada."
-        return response
+        
+        self.enviar_mensagem(f"ocupada", self.backup_estacoes[id_estacao]["ip"], self.backup_estacoes[id_estacao]["porta"]+10)
+        #response = f"Vaga ocupada."
+        #return response
 
 
     async def liberar_vaga(self, id_estacao, id_vaga, id_carro):

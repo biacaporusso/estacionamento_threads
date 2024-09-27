@@ -25,26 +25,43 @@ class Estacao:
         message = data.decode('utf-8')
         print("Message: ", message)
 
-        comando, *args = message.split()  # Divide a mensagem em partes
-        # print(args[0], args[1])
-        print(f"Estação {self.id_estacao} recebeu comando: {comando}")
+        #comando, *args = message.split()  # Divide a mensagem em partes
+        #print(args[0], args[1])
+        print(f"Estação {self.id_estacao} recebeu comando: {message}")
 
-        if comando == "RV":
-            response = await self.requisitar_vaga(args[0])  # Passa o parâmetro para a função - args[0] é o id do carro
-        elif comando == "LV":
+        #if comando == "RV":
+        if message.startswith("RV"):
+            comando = message.split(".")
+            writer.write(f"Chegou carro.".encode())
+            await writer.drain()
+            response = await self.requisitar_vaga(comando[1])  # Passa o parâmetro para a função - args[0] é o id do carro
+        elif message.startswith("LV"):
+            writer.write(f"Liberou vaga.".encode())
+            await writer.drain()
             response = await self.liberar_vaga()
-        elif comando == "AE":
-            writer.write("teste".encode())
+
+        elif message.startswith("AE"):
+            writer.write(f"{self.id_estacao} ativada.".encode())
             await writer.drain()
             #writer.close()
             response = await self.ativar_estacao(self.id_estacao) # passando id da estação
             print("resposta: ", response)
-        elif comando == "FE":
+
+        elif message.startswith("FE"):
             response = await self.finalizar_estacao()
-        elif comando == "VD":
+
+        elif message.startswith("VD"):
             response = await self.vagas_disponiveis(self.ip, self.porta)
-        elif comando == "ativada":
-            print("testeeeeeeeee")
+
+        elif message.startswith("ativada"):
+            print("===== entrou ativada estacao")
+            vagas_livres = message.split(".")
+            vagas_livres = vagas_livres[1].replace("[", "").replace("]", "").split(",")
+            print(" @@@@@@ vagas livres: ", vagas_livres)
+            self.vagas_livres = vagas_livres
+
+        elif message.startswith("ocupada"):
+            print("carro ocupou vaga")
         else:
             response = "Comando inválido."
 
@@ -69,11 +86,12 @@ class Estacao:
     
 
     async def requisitar_vaga(self, id_carro):
+        print(" @@ requisitar vaga: ", len(self.vagas_livres))
         if len(self.vagas_livres) > 0:
             id_vaga = self.vagas_livres.pop(0)
             self.vagas_ocupadas[id_vaga] = id_carro
             print("Carro conseguiu vaga.")
-            await self.enviar_mensagem(f"OK {self.id_estacao} {id_vaga} {id_carro}", self.ip, self.porta)       # Envia um "OK" pro endereço da stação
+            #await self.enviar_mensagem(f"OK {self.id_estacao} {id_vaga} {id_carro}", self.ip, self.porta)       # Envia um "OK" pro endereço da stação
             await self.enviar_mensagem(f"AV {self.id_estacao} {id_vaga} {id_carro}", self.ip, self.porta+10)    # Envia um "AV" pro middleware (middleware tem q atualizar o bkp no gerente)
         else:
             await self.enviar_mensagem(f"BV {id_carro}", self.ip, self.porta+10)    # Envia um "BV" (buscar vaga) para o middleware procurar vaga em outro middleware/estação
@@ -101,46 +119,28 @@ class Estacao:
         data = await reader.read(100) 
         return data.decode('utf-8')
     
-
-    async def liberar_vaga(self):
-        if self.vagas_ocupadas > 0:
-            self.vagas_ocupadas -= 1
-            return f"Vaga liberada. Total ocupadas: {self.vagas_ocupadas}."
+    async def liberar_vaga(self, id_carro):
+        if len(self.vagas_ocupadas) > 0:
+            id_vaga = self.vagas_livres.pop(0)
+            self.vagas_ocupadas[id_vaga] = id_carro
+            print("Carro liberou vaga.")
+            #await self.enviar_mensagem(f"OK {self.id_estacao} {id_vaga} {id_carro}", self.ip, self.porta)       # Envia um "OK" pro endereço da stação
+            await self.enviar_mensagem(f"AV {self.id_estacao} {id_vaga} {id_carro}", self.ip, self.porta+10)    # Envia um "AV" pro middleware (middleware tem q atualizar o bkp no gerente)
         else:
-            return "Não há vagas ocupadas para liberar."
+            await self.enviar_mensagem(f"BV {id_carro}", self.ip, self.porta+10)    # Envia um "BV" (buscar vaga) para o middleware procurar vaga em outro middleware/estação
+
+    # async def liberar_vaga(self):
+    #     print("entrou no liberar vaga")
+    #     if self.vagas_ocupadas > 0:
+    #         self.vagas_ocupadas -= 1
+    #         return f"Vaga liberada. Total ocupadas: {self.vagas_ocupadas}."
+    #     else:
+    #         return "Não há vagas ocupadas para liberar."
 
 
     async def finalizar_estacao(self):
         self.ativo = False
         return f"Estação {self.id_estacao} finalizada."
-
-
-
-    ## =========================================================================================================
-    
-
-    async def my_requisitar_vaga(self, id_carro):
-        # Verifica se ainda há vagas disponíveis
-        if len(self.vagas_ocupadas) < self.vagas_livres:
-            # Encontra a próxima vaga disponível
-            for vaga in range(1, self.vagas_livres + 1):
-                if vaga not in self.vagas_ocupadas:
-                    # Aloca a vaga para o carro
-                    self.vagas_ocupadas[vaga] = id_carro
-                    print(f'Vaga {vaga} alocada ao carro {id_carro}.')
-
-                    # Envia um "OK" pro endereço da stação
-                    await self.enviar_mensagem("OK", self.ip, self.porta)
-                    # Envia um "AV" pro middleware (middleware tem q atualizar o bkp no gerente)
-                    await self.enviar_mensagem("AV", self.ip, self.porta+10)
-                    return True
-
-        # Se não houver vaga, envia "BV" ao middleware (buscar vaga em outra estação)
-        print(f'Nenhuma vaga disponível na estação {self.id_estacao}.')
-        await self.enviar_mensagem("BV", self.ip, self.porta+10)
-        return False
-
-
 
 
 
