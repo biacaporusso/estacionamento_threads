@@ -1,10 +1,10 @@
-1:{'ip': '127.0.0.1', 'porta': 8891, 'id_vagas_livres': [1, 2], 'id_vagas_ocupadas': [], 'estacao_ativa': True}
-2:{'ip': '127.0.0.1', 'porta': 8892, 'id_vagas_livres': [], 'id_vagas_ocupadas': [], 'estacao_ativa': False}
-3:{'ip': '127.0.0.1', 'porta': 8893, 'id_vagas_livres': [], 'id_vagas_ocupadas': [], 'estacao_ativa': False}
-4:{'ip': '127.0.0.1', 'porta': 8894, 'id_vagas_livres': [0], 'id_vagas_ocupadas': [], 'estacao_ativa': True}
-5:{'ip': '127.0.0.1', 'porta': 8895, 'id_vagas_livres': [], 'id_vagas_ocupadas': [], 'estacao_ativa': False}
-6:{'ip': '127.0.0.1', 'porta': 8896, 'id_vagas_livres': [], 'id_vagas_ocupadas': [], 'estacao_ativa': False}
-7:{'ip': '127.0.0.1', 'porta': 8897, 'id_vagas_livres': [], 'id_vagas_ocupadas': [], 'estacao_ativa': False}
-8:{'ip': '127.0.0.1', 'porta': 8898, 'id_vagas_livres': [], 'id_vagas_ocupadas': [], 'estacao_ativa': False}
-9:{'ip': '127.0.0.1', 'porta': 8899, 'id_vagas_livres': [], 'id_vagas_ocupadas': [], 'estacao_ativa': False}
-10:{'ip': '127.0.0.1', 'porta': 8900, 'id_vagas_livres': [], 'id_vagas_ocupadas': [], 'estacao_ativa': False}
+1:{'ip': '127.0.0.1', 'porta': 8891, 'vagas': [(9, "'km7bo5'")], 'estacao_ativa': True}
+2:{'ip': '127.0.0.1', 'porta': 8892, 'vagas': [(4, "'ohxwys'")], 'estacao_ativa': True}
+3:{'ip': '127.0.0.1', 'porta': 8893, 'vagas': [(6, "'q29ip7'")], 'estacao_ativa': True}
+4:{'ip': '127.0.0.1', 'porta': 8894, 'vagas': [(1, "'t8jhfh'")], 'estacao_ativa': True}
+5:{'ip': '127.0.0.1', 'porta': 8895, 'vagas': [(7, "'0005tt'")], 'estacao_ativa': True}
+6:{'ip': '127.0.0.1', 'porta': 8896, 'vagas': [(2, "'fss4fd'")], 'estacao_ativa': True}
+7:{'ip': '127.0.0.1', 'porta': 8897, 'vagas': [(8, "'bq587j'")], 'estacao_ativa': True}
+8:{'ip': '127.0.0.1', 'porta': 8898, 'vagas': [(3, "'jl6nou'")], 'estacao_ativa': True}
+9:{'ip': '127.0.0.1', 'porta': 8899, 'vagas': [(5, "'l43kti'")], 'estacao_ativa': True}
+10:{'ip': '127.0.0.1', 'porta': 8900, 'vagas': [(0, "'ijooen'")], 'estacao_ativa': True}

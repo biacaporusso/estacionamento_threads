@@ -1,6 +1,6 @@
 import asyncio
 
-vagas = 3
+#vagas = 3
 porta_gerente = 5524
 
 class Gerente:
@@ -12,8 +12,9 @@ class Gerente:
             self.backup_estacoes[id] = {
                 "ip": "127.0.0.1",
                 "porta": portas_middlewares[id-1],
-                "id_vagas_livres": [],
-                "id_vagas_ocupadas": [],
+                "vagas": [],
+                # "id_vagas_livres": [],
+                # "id_vagas_ocupadas": [],
                 "estacao_ativa": False
                 # "porta_middleware": None,
                 # "ultimo_ping": None
@@ -32,24 +33,29 @@ class Gerente:
         print(f"Gerente recebeu: {message}")
 
         # Processa mensagens para atualizar o backup
-        if message.startswith("AV"):
-            msg = message.split()
-            response = await self.ocupar_vaga(msg[1], msg[2], msg[3])    # id_estacao id_vaga  id_carro
         
-        elif message.startswith("AE"):
+        if message.startswith("atualizar_vaga"):
             msg = message.split(".")
             id_nova_estacao = int(msg[1].replace("Station", ""))
             print(f'{id_nova_estacao}')
             #response = self.ativar_estacao(id_nova_estacao, vagas)  # id_estacao
             self.backup_estacoes[id_nova_estacao]["estacao_ativa"] = True
-            temp = msg[2].replace("[", "").replace("]", "").split(",")
-            self.backup_estacoes[id_nova_estacao]["id_vagas_livres"] = [int(i) for i in temp]
+            # temp = msg[2].replace("[", "").replace("]", "").split(",")
+            # self.backup_estacoes[id_nova_estacao]["id_vagas_livres"] = [int(i) for i in temp]
+            temp = msg[2].replace("[", "").replace("]", "").split(")")
+            vagas = []
+            for i in temp:
+                if not i:
+                    continue
+                var = i.replace("(", "").replace(",", "").split()
+                if var[1] == "None":
+                    var[1] = None
+                vagas.append((int(var[0]), var[1]))
+            self.backup_estacoes[id_nova_estacao]["vagas"] = vagas
             with open('backup_estacoes.txt', 'w') as f:
                 for key in self.backup_estacoes.keys():
                     f.write(f'{key}:{self.backup_estacoes[key]}\n')
 
-        elif message.startswith("BV"):
-            response = self.buscar_vaga()
 
         elif message.startswith("VD"): # VD 3
             msg = message.split(".")
@@ -137,44 +143,44 @@ class Gerente:
     
 
 
-    def ativar_estacao(self, id_nova_estacao):
-        nenhuma_estacao_ativa = True
-        for id_estacao in self.backup_estacoes:
-            if self.backup_estacoes[id_estacao]["estacao_ativa"]:
-                nenhuma_estacao_ativa = False
-        if nenhuma_estacao_ativa:
-            for id_vaga in range(0, vagas):
-                self.backup_estacoes[id_nova_estacao]["id_vagas_livres"].append(id_vaga)
+    # def ativar_estacao(self, id_nova_estacao):
+    #     nenhuma_estacao_ativa = True
+    #     for id_estacao in self.backup_estacoes:
+    #         if self.backup_estacoes[id_estacao]["estacao_ativa"]:
+    #             nenhuma_estacao_ativa = False
+    #     if nenhuma_estacao_ativa:
+    #         for id_vaga in range(0, vagas):
+    #             self.backup_estacoes[id_nova_estacao]["id_vagas_livres"].append(id_vaga)
             
-            self.backup_estacoes[id_nova_estacao]["estacao_ativa"] = True
-            print(self.backup_estacoes)
-        else:
-            vagas_ocupadas = []
-            vagas_livres = []
-            total_estacoes_ativas = 1
-            for id_estacao in self.backup_estacoes:
-                if self.backup_estacoes[id_estacao]["estacao_ativa"]:
-                    vagas_ocupadas.extend(self.backup_estacoes[id_estacao]["id_vagas_ocupadas"])
-                    vagas_livres.extend(self.backup_estacoes[id_estacao]["id_vagas_livres"])
-                    total_estacoes_ativas+=1
+    #         self.backup_estacoes[id_nova_estacao]["estacao_ativa"] = True
+    #         print(self.backup_estacoes)
+    #     else:
+    #         vagas_ocupadas = []
+    #         vagas_livres = []
+    #         total_estacoes_ativas = 1
+    #         for id_estacao in self.backup_estacoes:
+    #             if self.backup_estacoes[id_estacao]["estacao_ativa"]:
+    #                 vagas_ocupadas.extend(self.backup_estacoes[id_estacao]["id_vagas_ocupadas"])
+    #                 vagas_livres.extend(self.backup_estacoes[id_estacao]["id_vagas_livres"])
+    #                 total_estacoes_ativas+=1
 
-            qtd_vagas_ocupadas_estacao = int(len(vagas_ocupadas)/total_estacoes_ativas)
+    #         qtd_vagas_ocupadas_estacao = int(len(vagas_ocupadas)/total_estacoes_ativas)
 
-            for id_estacao in self.backup_estacoes:
-                if self.backup_estacoes[id_estacao]["estacao_ativa"]:
-                    vagas_ocupadas = self.adicionar_vagas(id_estacao, vagas_ocupadas, "id_vagas_ocupadas", qtd_vagas_ocupadas_estacao)
+    #         for id_estacao in self.backup_estacoes:
+    #             if self.backup_estacoes[id_estacao]["estacao_ativa"]:
+    #                 vagas_ocupadas = self.adicionar_vagas(id_estacao, vagas_ocupadas, "id_vagas_ocupadas", qtd_vagas_ocupadas_estacao)
 
-            self.backup_estacoes[id_nova_estacao]["id_vagas_ocupadas"].extend(vagas_ocupadas)
+    #         self.backup_estacoes[id_nova_estacao]["id_vagas_ocupadas"].extend(vagas_ocupadas)
 
-            qtd_vagas_livres_estacao = int(len(vagas_livres)/total_estacoes_ativas)
+    #         qtd_vagas_livres_estacao = int(len(vagas_livres)/total_estacoes_ativas)
 
-            for id_estacao in self.backup_estacoes:
-                if self.backup_estacoes[id_estacao]["estacao_ativa"]:
-                    vagas_livres = self.adicionar_vagas(id_estacao, vagas_livres, "id_vagas_livres", qtd_vagas_livres_estacao)
+    #         for id_estacao in self.backup_estacoes:
+    #             if self.backup_estacoes[id_estacao]["estacao_ativa"]:
+    #                 vagas_livres = self.adicionar_vagas(id_estacao, vagas_livres, "id_vagas_livres", qtd_vagas_livres_estacao)
 
-            self.backup_estacoes[id_nova_estacao]["id_vagas_livres"].extend(vagas_livres)
+    #         self.backup_estacoes[id_nova_estacao]["id_vagas_livres"].extend(vagas_livres)
             
-        print(self.backup_estacoes)
+    #     print(self.backup_estacoes)
 
-        response = f'ativada.{self.backup_estacoes[id_nova_estacao]["id_vagas_livres"]}'
-        return response
+    #     response = f'ativada.{self.backup_estacoes[id_nova_estacao]["id_vagas_livres"]}'
+    #     return response

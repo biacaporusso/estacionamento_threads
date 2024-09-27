@@ -3,7 +3,7 @@ import threading
 from llist import sllist
 
 porta_gerente = 5524
-vagas_total = 3
+vagas_total = 10
 lista_ativos = sllist()
 
 class Middleware:
@@ -36,22 +36,26 @@ class Middleware:
             await self.teste_BV(lista_ativos)
             #response = await self.enviar_mensagem(f"BV", self.ip, porta_gerente) #(args[1]) # nesse caso, args[1] é o id_carro 
         
-        elif message.startswith("AV"):
+        elif message.startswith("RV"):
             msg = message.split()
-            response = await self.enviar_mensagem(f'AV {msg[1].replace("Station", "")} {msg[2]} {msg[3]}', self.ip, porta_gerente) # id_estacao id_vaga id_carro
-        
+            # msg[1] = id_estacao e msg[2] id_carro
+            #response = await self.requisitar_vaga(f'AV {msg[1].replace("Station", "")} {msg[2]} {msg[3]}', self.ip, porta_gerente) # id_estacao id_vaga id_carro
+            await self.requisitar_vaga(msg[1], msg[2])
+
         elif message.startswith("AE"):
             msg = message.split()
             await self.teste_AE()
             # teste.join()
-            response = await self.enviar_mensagem(f"AE.{msg[1]}.{self.vagas}", self.ip, porta_gerente) # AE id_estação => passar a mensagem ativar estação para o backup do gerente
+            response = await self.enviar_mensagem(f"atualizar_vaga.{msg[1]}.{self.vagas}", self.ip, porta_gerente) # AE id_estação => passar a mensagem ativar estação para o backup do gerente
             response2 = await self.enviar_mensagem(f"ativada.{self.vagas}", self.ip, self.porta-10) # AE id_estação => passar a mensagem ativar estação para a estação
             #print("\n ########      Ativos: ", lista_ativos)
         
+        elif message.startswith("LV"):
+            msg = message.split()
+            await self.teste_LV(msg[1])
+
         elif message.startswith("VD"):
             msg = message.split(".")
-            print(">>>>> VD:: ", msg[1])
-            # print(">>>>> VD:: )
             response = await self.enviar_mensagem(f"VD.{msg[1]}", self.ip, porta_gerente)
 
         elif message.startswith("vd_response"):
@@ -59,37 +63,66 @@ class Middleware:
             response = await self.enviar_mensagem(f"vd_response.{msg[1]}", self.ip, self.porta-10)
         
         elif message.startswith("nvagas"):
-            print(">>>>> entrou nvagas middleware") 
+            #print(">>>>> entrou nvagas middleware") 
             msg = message.split()
             response = await self.enviar_mensagem(f"response_nvagas {len(self.vagas)}", msg[1], int(msg[2]))
         
         elif message.startswith("response_nvagas"):
-            print(">>>>> entrou response_nvagas middleware")
+            #print(">>>>> entrou response_nvagas middleware")
             self.response = message.split()[1]
             if not self.response_future.done():  # Verifica se a Future já foi completada
                 self.response_future.set_result(self.response)
 
         elif message.startswith("emprestar_vagas"):
-            print(">>>>> entrou emprestar middleware")
+            #print(">>>>> entrou emprestar middleware")
             msg = message.split()
+            # cálculo de quantas vagas vai emprestar
             vagas_emprestando = self.vagas[:len(self.vagas)//2]
             self.vagas = self.vagas[len(self.vagas)//2:]
             response = await self.enviar_mensagem(f"response_emprestar_vagas.{vagas_emprestando}", msg[1], int(msg[2]))
-            response = await self.enviar_mensagem(f"AE.{self.estacao.id_estacao}.{self.vagas}", self.ip, porta_gerente)
+            response = await self.enviar_mensagem(f"atualizar_vaga.{self.estacao.id_estacao}.{self.vagas}", self.ip, porta_gerente)
 
         elif message.startswith("response_emprestar_vagas"):
-            print(">>>>> entrou response emprestar middleware ", message)
+            #print(">>>>> entrou response emprestar middleware ", message)
             self.response = message.split(".")[1]
             if not self.response_future.done():  # Verifica se a Future já foi completada
                 self.response_future.set_result(self.response)
 
-        elif message.startswith("ativada"):
-            print(">>>>> entrou ativada middleware")
-            lista_resposta = message.split(".")
-            await self.enviar_mensagem(message, self.ip, self.porta-10)
+        elif message.startswith("vaga_livre"):
+            msg = message.split()
+            alocado = False
+            for i in range(len(self.vagas)):
+                vaga = self.vagas[i]
+                if vaga[1] is None:
+                    self.vagas[i] = (vaga[0], msg[3])
+                    await self.enviar_mensagem(f"atualizar_vaga.{self.estacao.id_estacao}.{self.vagas}", self.ip, porta_gerente)
+                    response = await self.enviar_mensagem(f"response_vaga_livre.alocada", msg[1], msg[2])
+                    alocado = True
+                    break
+            if not alocado:
+                response = await self.enviar_mensagem(f"response_vaga_livre.nao_alocada", msg[1], msg[2])
 
-        elif message.startswith("ocupada"):
-            await self.enviar_mensagem("ocupada", self.ip, self.porta-10)
+        elif message.startswith("response_vaga_livre"):
+            print("entrou response_vaga_livre")
+            self.response = message.split(".")[1]
+            if not self.response_future.done():  # Verifica se a Future já foi completada
+                self.response_future.set_result(self.response)
+
+        elif message.startswith("liberar_carro"):
+            msg = message.split()
+            for i in range(len(self.vagas)):
+                vaga = self.vagas[i]
+                if vaga[1] == msg[3]: # se é o id_carro
+                    self.vagas[i] = (vaga[0], None)
+                    await self.enviar_mensagem(f"atualizar_vaga.{self.estacao.id_estacao}.{self.vagas}", self.ip, porta_gerente)
+                    response = await self.enviar_mensagem(f"response_liberar_carro.liberou", msg[1], msg[2])
+                    break
+        
+        elif message.startswith("response_liberar_carro"):
+            self.response = message.split(".")[1]
+            if not self.response_future.done():
+                self.response_future.set_result(self.response)
+        
         else:
             response = "Comando não reconhecido"
 
@@ -98,41 +131,99 @@ class Middleware:
         #writer.close()
 
 
+    async def requisitar_vaga(self, id_estacao, id_carro):
+        print("????entrou requisitar vaga", self.vagas)
+        # verificar se há vaga na estação
+        for i in range(len(self.vagas)):
+            vaga = self.vagas[i]
+            if vaga[1] is None: # vaga livre
+                self.vagas[i] = (vaga[0], id_carro)
+                print("     self.vagas[i][1]: ", self.vagas[i][1])
+                await self.enviar_mensagem(f"atualizar_vaga.{self.estacao.id_estacao}.{self.vagas}", self.ip, porta_gerente)
+                return "alocou"
+            
+        # não há vaga na estação, então tem que percorrer a lista buscando outra vaga
+        if len(lista_ativos) > 0:
+            for i in range(len(lista_ativos)):
+                mid = lista_ativos[i]
+                self.response_future = asyncio.Future()
+                
+                # verificar se tem vaga livre nesse mid
+                await self.enviar_mensagem(f"vaga_livre {self.ip} {self.porta} {id_carro}", mid.ip, mid.porta) 
+                response = await self.response_future
+                if response == "alocada":
+                    return "alocou"
+                else:
+                    continue
+
+
+    async def teste_LV(self, id_carro):
+        for i in range(len(self.vagas)):
+            vaga = self.vagas[i]
+            if vaga[1] == id_carro:
+                self.vagas[i] = (vaga[0], None)
+                await self.enviar_mensagem(f"atualizar_vaga.{self.estacao.id_estacao}.{self.vagas}", self.ip, porta_gerente)
+                return "liberou"
+        
+        # procurar nas outras listas o id_carro
+        if len(lista_ativos) > 0:
+            for i in range(len(lista_ativos)):
+                mid = lista_ativos[i]
+                self.response_future = asyncio.Future()
+                
+                # verificar se tem id_carro nesse mid
+                await self.enviar_mensagem(f"liberar_carro {self.ip} {self.porta} {id_carro}", mid.ip, mid.porta) 
+                response = await self.response_future
+                if response == "liberou":
+                    return "liberou"
+                else:
+                    continue
+
+
     async def teste_AE(self):
         max_estacao = -1
         index = -1
         a = 0
 
-        if len(lista_ativos) > 0:
+        if len(lista_ativos) > 0: # ja tem estação ativada entao tem q redistribuir as vagas
             for i in range(len(lista_ativos)):
                 mid = lista_ativos[i]
                 print(f"--------> sending nvagas {mid.ip} {mid.porta}")
                 # Cria uma nova Future para aguardar a resposta antes de enviar a mensagem
-                self.response_future = asyncio.Future()  # Create a new Future for each request
+                self.response_future = asyncio.Future()
             
-                await self.enviar_mensagem(f"nvagas {self.ip} {self.porta}", mid.ip, mid.porta)
+                # perguntando pro mid quantas vagas ele tem e depois responder
+                await self.enviar_mensagem(f"nvagas {self.ip} {self.porta}", mid.ip, mid.porta) 
                 # Aguardar a resposta que será setada no processar_mensagem
-                response = await self.response_future  # Await the response from processar_mensagem
+                response = await self.response_future # response = quantas vagas aquele mid tem
             
-                print(f"çççç {a} response: ", response)
                 a += 1
+                # ver qual é o middleware com mais vagas
                 if int(response) > max_estacao:
                     max_estacao = int(response)
                     index = i
             print("max_estacao, index: ", max_estacao, index)
-            self.response_future = asyncio.Future()  # Create a new Future for each request
+            self.response_future = asyncio.Future()
+            # pedir vaga pra outra estação (dentro do emprestar_vagas")
             bla = await self.enviar_mensagem(f"emprestar_vagas {self.ip} {self.porta}", lista_ativos[index].ip, lista_ativos[index].porta)
-            response = await self.response_future  # Await the response from processar_mensagem
+            response = await self.response_future # lista de vagas que emprestou
             # transformar response de string para lista
             print("response: ", self.response)
-            temp = self.response.replace("[", "").replace("]", "").split(",")
-            self.vagas = [int(i) for i in temp]
-            print("vagas pos ativar: ", self.vagas)
+            #temp = self.response.replace("[", "").replace("]", "").split(",")
+            temp = self.response.replace("[", "").replace("]", "").split(")")
+            for i in temp:
+                if not i:
+                    continue
+                var = i.replace("(", "").replace(",", "").split()
+                if var[1] == "None":
+                    var[1] = None
+                self.vagas.append((int(var[0]), var[1]))
+            #print("vagas pos ativar: ", self.vagas)
 
             # distribuir vagas
             lista_ativos.append(self) #
         else:
-            self.vagas = [i for i in range(0, vagas_total)]
+            self.vagas = [(int(i), None) for i in range(0, vagas_total)]
             print("primeira ativação vagas: ", self.vagas)
             lista_ativos.append(self) #
 
@@ -149,7 +240,7 @@ class Middleware:
     async def enviar_mensagem(self, mensagem, ip, porta):
         try:
             reader, writer = await asyncio.open_connection(ip, porta)
-            print(f"Conectado a {ip}:{porta}")
+            #print(f"Conectado a {ip}:{porta}")
             writer.write(mensagem.encode())
             await writer.drain()
 
