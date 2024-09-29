@@ -2,8 +2,9 @@ import asyncio
 from Estacao import Estacao
 from Middleware import Middleware
 from Gerente import Gerente
+import threading
 
-porta_gerente = 5524
+porta_gerente = 5523
 
 # Função para ler o arquivo de estações e retornar uma lista de objetos Estacao
 def ler_arquivo_estacoes():
@@ -28,10 +29,7 @@ def ler_arquivo_estacoes():
                 portas_middlewares.append(porta + 10)
                 middlewares.append(middleware)
 
-    # Conectar os middlewares em uma lista circular
-    for i in range(len(middlewares)):
-        next_index = (i + 1) % len(middlewares)  # Calcula o próximo middleware circularmente
-        middlewares[i].proximo_middleware = middlewares[next_index] 
+   
 
     return estacoes, middlewares, portas_middlewares
 
@@ -46,6 +44,7 @@ async def main():
     tasks.append(task_gerente)
 
     # Inicia o servidor para cada estação e seu middleware correspondente
+    threads = []
     for estacao, middleware in zip(estacoes, middlewares):
         # Iniciar o socket da estação
         task_estacao = asyncio.create_task(estacao.iniciar_socket_estacao())
@@ -54,10 +53,20 @@ async def main():
         # Iniciar o socket do middleware
         task_middleware = asyncio.create_task(middleware.iniciar_socket_middleware())
         tasks.append(task_middleware)
+        
+        # task_ping = asyncio.create_task(middleware.iniciar_ping())
+        task_ping = asyncio.create_task(middleware.ping_estacoes())
+        tasks.append(task_ping) 
+        
+        # ping_thread = threading.Thread(target=middleware.ping_estacoes)
+        # threads.append(ping_thread)
 
-
+    # for thread in threads:
+    #     print("start threads")
+    #     thread.start()
     # Aguarda todas as tasks (servidores de estação e middleware) rodarem simultaneamente
     await asyncio.gather(*tasks)
+
 
 # Executa a função main
 asyncio.run(main())

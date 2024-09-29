@@ -1,6 +1,6 @@
 import asyncio
 
-porta_gerente = 5524
+porta_gerente = 5523
 
 class Estacao:
     def __init__(self, id_estacao, ip, porta):

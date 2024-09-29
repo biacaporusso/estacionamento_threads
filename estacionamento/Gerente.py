@@ -1,7 +1,7 @@
 import asyncio
 
 #vagas = 3
-porta_gerente = 5524
+porta_gerente = 5523
 
 class Gerente:
     def __init__(self, ip, porta, portas_middlewares):
@@ -35,7 +35,7 @@ class Gerente:
         if message.startswith("atualizar_vaga"):
             msg = message.split(".")
             id_nova_estacao = int(msg[1].replace("Station", ""))
-            print(f'{id_nova_estacao}')
+            print(f' entrou no atualizar_vaga e id_nova_estacao = {id_nova_estacao}')
             self.backup_estacoes[id_nova_estacao]["estacao_ativa"] = True
             temp = msg[2].replace("[", "").replace("]", "").split(")")
             vagas = []
@@ -51,11 +51,20 @@ class Gerente:
                 for key in self.backup_estacoes.keys():
                     f.write(f'{key}:{self.backup_estacoes[key]}\n')
 
-
         elif message.startswith("VD"): # VD 3
             msg = message.split(".")
             response = await self.vagas_disponiveis(msg[1])
             await self.enviar_mensagem(response, self.backup_estacoes[int(msg[1])]["ip"], self.backup_estacoes[int(msg[1])]["porta"])
+        
+        elif message.startswith("eleicao"):
+            msg = message.split()
+            # msg[1] = id da estação que falhou
+            id_falhou = msg[1].replace("Station", "")
+            # msg[2] e msg[3] = ip e porta de quem pediu
+            vagas_falhou = self.backup_estacoes[int(id_falhou)]["vagas"]
+            self.backup_estacoes[int(id_falhou)]["vagas"] = []
+            await self.enviar_mensagem(f"set_response.{vagas_falhou}", msg[2], msg[3])
+        
         else:
             print("Nao chegou comando pro gerente")
 
@@ -126,46 +135,3 @@ class Gerente:
                 print("Nenhuma estaçaõ ativa")
         return response
     
-
-
-    # def ativar_estacao(self, id_nova_estacao):
-    #     nenhuma_estacao_ativa = True
-    #     for id_estacao in self.backup_estacoes:
-    #         if self.backup_estacoes[id_estacao]["estacao_ativa"]:
-    #             nenhuma_estacao_ativa = False
-    #     if nenhuma_estacao_ativa:
-    #         for id_vaga in range(0, vagas):
-    #             self.backup_estacoes[id_nova_estacao]["id_vagas_livres"].append(id_vaga)
-            
-    #         self.backup_estacoes[id_nova_estacao]["estacao_ativa"] = True
-    #         print(self.backup_estacoes)
-    #     else:
-    #         vagas_ocupadas = []
-    #         vagas_livres = []
-    #         total_estacoes_ativas = 1
-    #         for id_estacao in self.backup_estacoes:
-    #             if self.backup_estacoes[id_estacao]["estacao_ativa"]:
-    #                 vagas_ocupadas.extend(self.backup_estacoes[id_estacao]["id_vagas_ocupadas"])
-    #                 vagas_livres.extend(self.backup_estacoes[id_estacao]["id_vagas_livres"])
-    #                 total_estacoes_ativas+=1
-
-    #         qtd_vagas_ocupadas_estacao = int(len(vagas_ocupadas)/total_estacoes_ativas)
-
-    #         for id_estacao in self.backup_estacoes:
-    #             if self.backup_estacoes[id_estacao]["estacao_ativa"]:
-    #                 vagas_ocupadas = self.adicionar_vagas(id_estacao, vagas_ocupadas, "id_vagas_ocupadas", qtd_vagas_ocupadas_estacao)
-
-    #         self.backup_estacoes[id_nova_estacao]["id_vagas_ocupadas"].extend(vagas_ocupadas)
-
-    #         qtd_vagas_livres_estacao = int(len(vagas_livres)/total_estacoes_ativas)
-
-    #         for id_estacao in self.backup_estacoes:
-    #             if self.backup_estacoes[id_estacao]["estacao_ativa"]:
-    #                 vagas_livres = self.adicionar_vagas(id_estacao, vagas_livres, "id_vagas_livres", qtd_vagas_livres_estacao)
-
-    #         self.backup_estacoes[id_nova_estacao]["id_vagas_livres"].extend(vagas_livres)
-            
-    #     print(self.backup_estacoes)
-
-    #     response = f'ativada.{self.backup_estacoes[id_nova_estacao]["id_vagas_livres"]}'
-    #     return response
