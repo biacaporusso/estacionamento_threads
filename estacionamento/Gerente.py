@@ -35,7 +35,6 @@ class Gerente:
         if message.startswith("atualizar_vaga"):
             msg = message.split(".")
             id_nova_estacao = int(msg[1].replace("Station", ""))
-            print(f' entrou no atualizar_vaga e id_nova_estacao = {id_nova_estacao}')
             self.backup_estacoes[id_nova_estacao]["estacao_ativa"] = True
             temp = msg[2].replace("[", "").replace("]", "").split(")")
             vagas = []
@@ -123,7 +122,7 @@ class Gerente:
                 if vaga[1] is None:
                     vagas_livres += 1
             vagas_ocupadas = len(self.backup_estacoes[id_estacao]["vagas"]) - vagas_livres
-            mensagem += f"\n{id_estacao}:{vagas_livres} - {vagas_ocupadas}   "
+            mensagem += f"\n{id_estacao}: {vagas_livres} - {vagas_ocupadas}   "
         
         # for key in self.backup_estacoes.keys():
         #             f.write(f'{key}:{self.backup_estacoes[key]}\n')

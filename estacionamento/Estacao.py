@@ -11,6 +11,7 @@ class Estacao:
         self.server_socket = None  # Referência ao socket da estação        implementar dicionario
         writers = {}  # Dicionário de writers associados a cada estação
 
+
     async def iniciar_socket_estacao(self):
         # Inicializa o socket usando asyncio para comunicação assíncrona
         self.server_socket = await asyncio.start_server(self.processar_comando, self.ip, self.porta)
@@ -22,22 +23,18 @@ class Estacao:
     async def processar_comando(self, reader, writer):
         data = await reader.read(1000)
         message = data.decode('utf-8')
-        print("Message: ", message)
-        print(f"Estação {self.id_estacao} recebeu comando: {message}")
+        print(f"\nEstação {self.id_estacao} recebeu comando: {message}")
 
-        #if comando == "RV":
         if message.startswith("RV"):
             comando = message.split(".")
             writer.write(f"Chegou carro.".encode())
             await writer.drain()
-            print("!!!!!!!!!",comando[1])
             await self.enviar_mensagem(f"RV {self.id_estacao} {comando[1]}", self.ip, self.porta+10)    # Envia um "AV" pro middleware (middleware tem q atualizar o bkp no gerente)
 
         elif message.startswith("LV"):
             comando = message.split(".")
             writer.write(f"Liberou vaga.".encode())
             await writer.drain()
-            print("!!!!!!!!!",comando[1])
             await self.enviar_mensagem(f"LV {comando[1]}", self.ip, self.porta+10)    # Envia um "AV" pro middleware (middleware tem q atualizar o bkp no gerente)
 
         elif message.startswith("AE"):
@@ -53,9 +50,9 @@ class Estacao:
             await self.enviar_mensagem(f"FE {self.id_estacao}", self.ip, self.porta+10)
 
         elif message.startswith("VD"):
-            print("entrou no VD")
+            writer.write(f"Mostrou vagas disponíveis.".encode())
+            await writer.drain()
             station_id = self.id_estacao.replace("Station", "")
-            print("station id e writer: ", station_id)
             await self.enviar_mensagem(f"VD.{station_id}", self.ip, self.porta+10)
 
         elif message.startswith("vd_response"):
@@ -64,13 +61,8 @@ class Estacao:
             print(" lista estacoes ", lista_estacoes[1])
             await self.enviar_mensagem(f"vd_response.{lista_estacoes[1]}", self.ip, 5554)  # Envia a resposta para o middleware
 
-
         else:
-            response = "Comando inválido."
-
-        # writer.write(response.encode('utf-8'))
-        # await writer.drain()
-        # writer.close()
+            print("Comando inválido.")
 
 
     # Função para enviar mensagens ao middleware

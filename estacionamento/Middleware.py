@@ -20,17 +20,11 @@ class Middleware:
         self.pings = []
         self.tempo_ping = 0
 
+
     async def iniciar_socket_middleware(self):
         server = await asyncio.start_server(self.processar_mensagem, self.ip, self.porta)
-        
         async with server:
             await server.serve_forever()
-
-    # async def iniciar_ping(self):
-    #     server = await asyncio.start_server(self.ping_estacoes, self.ip, self.porta+50)
-
-    #     async with server:
-    #         await server.serve_forever()
 
 
     async def processar_mensagem(self, reader, writer):
@@ -46,8 +40,7 @@ class Middleware:
             msg = message.split()
             self.ativo = True
             await self.teste_AE()
-            response = await self.enviar_mensagem(f"atualizar_vaga.{msg[1]}.{self.vagas}", self.ip, porta_gerente) # AE id_estação => passar a mensagem ativar estação para o backup do gerente
-            #response2 = await self.enviar_mensagem(f"ativada.{self.vagas}", self.ip, self.porta-10) # AE id_estação => passar a mensagem ativar estação para a estação
+            await self.enviar_mensagem(f"atualizar_vaga.{msg[1]}.{self.vagas}", self.ip, porta_gerente) # AE id_estação => passar a mensagem ativar estação para o backup do gerente
         
         elif message.startswith("LV"):
             msg = message.split()
@@ -60,15 +53,15 @@ class Middleware:
 
         elif message.startswith("VD"):
             msg = message.split(".")
-            response = await self.enviar_mensagem(f"VD.{msg[1]}", self.ip, porta_gerente)
+            await self.enviar_mensagem(f"VD.{msg[1]}", self.ip, porta_gerente)
 
         elif message.startswith("vd_response"):
             msg = message.split(".")
-            response = await self.enviar_mensagem(f"vd_response.{msg[1]}", self.ip, self.porta-10)
+            await self.enviar_mensagem(f"vd_response.{msg[1]}", self.ip, self.porta-10)
         
         elif message.startswith("nvagas"):
             msg = message.split()
-            response = await self.enviar_mensagem(f"set_response.{len(self.vagas)}", msg[1], int(msg[2]))
+            await self.enviar_mensagem(f"set_response.{len(self.vagas)}", msg[1], int(msg[2]))
 
         elif message.startswith("emprestar_vagas"):
             msg = message.split()
@@ -134,26 +127,14 @@ class Middleware:
             if not self.response_future.done():
                 self.response_future.set_result(self.response)
 
-
-        
         else:
-            response = "Comando não reconhecido"
-
-        # writer.write(response.encode('utf-8'))
-        # await writer.drain()
-        #writer.close()
-
+            print("Comando não reconhecido")
 
 
     async def ping_estacoes(self):
         while True:
-            # print(f" {self.estacao.id_estacao} KKKKKKKKKKKKKKKKKKKKK entrou no ping")
-            # if not self.ativo:
-            #     await asyncio.sleep(2)
-            #     continue
             while not self.ativo:
                 await asyncio.sleep(1)
-
             await asyncio.sleep(10)
             for mid in lista_ativos:
                 if mid != self:
@@ -176,7 +157,6 @@ class Middleware:
                         break
             else:
                 self.pings = []
-                print(" ¨¨ todas ativas")
 
 
     async def eleicao(self, id_estacao_falha):
@@ -201,7 +181,6 @@ class Middleware:
                 mid = lista_ativos[i]
                 if mid == self:
                     continue
-                print(f"--------> sending nvagas {mid.ip} {mid.porta}")
                 # Cria uma nova Future para aguardar a resposta antes de enviar a mensagem
                 self.response_future = asyncio.Future()
                 # perguntando pro mid quantas vagas ele tem e depois responder
@@ -228,7 +207,6 @@ class Middleware:
             vaga = self.vagas[i]
             if vaga[1] is None: # vaga livre
                 self.vagas[i] = (vaga[0], id_carro)
-                print("     self.vagas[i][1]: ", self.vagas[i][1])
                 await self.enviar_mensagem(f"atualizar_vaga.{self.estacao.id_estacao}.{self.vagas}", self.ip, porta_gerente)
                 return "alocou"
             
@@ -251,7 +229,6 @@ class Middleware:
         for i in range(len(self.vagas)):
             vaga = self.vagas[i]
             if vaga[1] == id_carro:
-                print(" |||||||||| entrou no antes atualizar vaga de LV")
                 self.vagas[i] = (vaga[0], None)
                 await self.enviar_mensagem(f"atualizar_vaga.{self.estacao.id_estacao}.{self.vagas}", self.ip, porta_gerente)
                 return "liberou"
@@ -278,7 +255,6 @@ class Middleware:
         if len(lista_ativos) > 0: # ja tem estação ativada entao tem q redistribuir as vagas
             for i in range(len(lista_ativos)):
                 mid = lista_ativos[i]
-                print(f"--------> sending nvagas {mid.ip} {mid.porta}")
                 # Cria uma nova Future para aguardar a resposta antes de enviar a mensagem
                 self.response_future = asyncio.Future()
             
@@ -292,14 +268,11 @@ class Middleware:
                 if int(response) > max_estacao:
                     max_estacao = int(response)
                     index = i
-            print("max_estacao, index: ", max_estacao, index)
             self.response_future = asyncio.Future()
             # pedir vaga pra outra estação (dentro do emprestar_vagas")
             await self.enviar_mensagem(f"emprestar_vagas {self.ip} {self.porta}", lista_ativos[index].ip, lista_ativos[index].porta)
             response = await self.response_future # lista de vagas que emprestou
             # transformar response de string para lista
-            print("response: ", self.response)
-            #temp = self.response.replace("[", "").replace("]", "").split(",")
             temp = self.response.replace("[", "").replace("]", "").split(")")
             for i in temp:
                 if not i:
@@ -316,14 +289,6 @@ class Middleware:
             self.vagas = [(int(i), None) for i in range(0, vagas_total)]
             print("primeira ativação vagas: ", self.vagas)
             lista_ativos.append(self) #
-
-
-    def teste_BV(self, lista_ativos):
-        print("entrou no teste")
-        for middleware in lista_ativos:
-            print(" ************** vagas livres: ", len(middleware.estacao.vagas_livres))
-            if len(middleware.estacao.vagas_livres) > 0:
-                print(" @@@ tem vaga")
 
 
     # Função para enviar mensagens ao middleware
