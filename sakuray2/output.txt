@@ -1,4 +1,0 @@
-16010453
-16010453
-(VD 3) Active stations (ID, VagasTotais, VagasOcupadas, VagasVazias):
-
