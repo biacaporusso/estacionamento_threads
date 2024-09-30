@@ -1,2 +1,4 @@
-20006128
-20006128
+16010453
+16010453
+(VD 3) Active stations (ID, VagasTotais, VagasOcupadas, VagasVazias):
+

@@ -53,8 +53,8 @@ class Gerente:
 
         elif message.startswith("VD"): # VD 3
             msg = message.split(".")
-            response = await self.vagas_disponiveis(msg[1])
-            await self.enviar_mensagem(response, self.backup_estacoes[int(msg[1])]["ip"], self.backup_estacoes[int(msg[1])]["porta"])
+            await self.vagas_disponiveis(msg[1])
+            # await self.enviar_mensagem(response, self.backup_estacoes[int(msg[1])]["ip"], self.backup_estacoes[int(msg[1])]["porta"])
         
         elif message.startswith("eleicao"):
             msg = message.split()
@@ -117,14 +117,18 @@ class Gerente:
         # Verifica quantas vagas estão disponíveis e ocupadas em cada estação ativa
         mensagem = "vd_response."
         for id_estacao in self.backup_estacoes.keys():
-            mensagem += f"{id_estacao}:{len(self.backup_estacoes[id_estacao]['id_vagas_livres'])}-{len(self.backup_estacoes[id_estacao]['id_vagas_ocupadas'])}   "
+            # calculo de vagas livres e ocupadas
+            vagas_livres = 0
+            for vaga in self.backup_estacoes[id_estacao]["vagas"]:
+                if vaga[1] is None:
+                    vagas_livres += 1
+            vagas_ocupadas = len(self.backup_estacoes[id_estacao]["vagas"]) - vagas_livres
+            mensagem += f"\n{id_estacao}:{vagas_livres} - {vagas_ocupadas}   "
         
         # for key in self.backup_estacoes.keys():
         #             f.write(f'{key}:{self.backup_estacoes[key]}\n')
         print(mensagem)
-        #self.enviar_mensagem(mensagem, self.backup_estacoes[id_to_send]["ip"], self.backup_estacoes[id_to_send]["porta"]+10)
-        return mensagem
-        
+
 
     async def buscar_vaga(self):
         for i in range(0, len(self.backup_estacoes)):

@@ -1,7 +1,7 @@
-1:{'ip': '127.0.0.1', 'porta': 8891, 'vagas': [(0, None), (1, None), (2, None), (3, None), (4, None), (5, None), (6, None), (5, None), (6, None), (7, None), (8, None), (9, None), (7, None), (8, None), (9, None), (8, None), (9, None)], 'estacao_ativa': True}
-2:{'ip': '127.0.0.1', 'porta': 8892, 'vagas': [(0, None), (1, None), (2, None), (3, None), (4, None), (2, None), (3, None), (4, None), (3, None), (4, None)], 'estacao_ativa': True}
+1:{'ip': '127.0.0.1', 'porta': 8891, 'vagas': [(8, None), (9, None)], 'estacao_ativa': True}
+2:{'ip': '127.0.0.1', 'porta': 8892, 'vagas': [(3, None), (4, None)], 'estacao_ativa': True}
 3:{'ip': '127.0.0.1', 'porta': 8893, 'vagas': [(5, None), (6, None)], 'estacao_ativa': True}
-4:{'ip': '127.0.0.1', 'porta': 8894, 'vagas': [(0, None), (1, None), (0, "'t8jhfh'"), (1, None), (0, None), (1, None)], 'estacao_ativa': True}
+4:{'ip': '127.0.0.1', 'porta': 8894, 'vagas': [(0, None), (1, None)], 'estacao_ativa': True}
 5:{'ip': '127.0.0.1', 'porta': 8895, 'vagas': [(7, None)], 'estacao_ativa': True}
 6:{'ip': '127.0.0.1', 'porta': 8896, 'vagas': [(2, None)], 'estacao_ativa': True}
 7:{'ip': '127.0.0.1', 'porta': 8897, 'vagas': [], 'estacao_ativa': False}

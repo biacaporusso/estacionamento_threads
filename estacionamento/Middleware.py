@@ -18,7 +18,6 @@ class Middleware:
         self.proximo_middleware = None  # O próximo middleware na lista circular
         self.ativo = False
         self.pings = []
-        self.intervalo_ping = 5
         self.tempo_ping = 0
 
     async def iniciar_socket_middleware(self):
@@ -57,6 +56,7 @@ class Middleware:
         elif message.startswith("FE"):
             msg = message.split()
             self.ativo = False
+            self.vagas = []
 
         elif message.startswith("VD"):
             msg = message.split(".")
@@ -116,16 +116,12 @@ class Middleware:
         elif message.startswith("herdar_vaga"):
             msg = message.split(".")
             temp = msg[1].replace("[", "").replace("]", "").split(")")
-            print(f"   ::::::: msg: {message}, temp: {temp}")
-            print(f" type {type(msg[1])}")
-            # ['(7,']
-            #temp = temp.replace("['(", "").replace(",']", "")
             vagas_estacao_falhou = []
             for i in temp:
                 if not i:
                     continue
                 var = i.replace("(", "").replace(",", "").split()
-                print(f"\n\n->>>> {var}\n")
+                # print(f"\n\n->>>> {var}\n")
                 if var[1] == "None":
                     var[1] = None
                 vagas_estacao_falhou.append((int(var[0]), var[1]))
@@ -158,7 +154,7 @@ class Middleware:
             while not self.ativo:
                 await asyncio.sleep(1)
 
-            await asyncio.sleep(self.intervalo_ping)
+            await asyncio.sleep(10)
             for mid in lista_ativos:
                 if mid != self:
                     self.response_future = asyncio.Future()
@@ -177,6 +173,7 @@ class Middleware:
                         lista_ativos.remove(mid)
                         self.pings = []
                         await self.eleicao(mid.estacao.id_estacao)
+                        break
             else:
                 self.pings = []
                 print(" ¨¨ todas ativas")
